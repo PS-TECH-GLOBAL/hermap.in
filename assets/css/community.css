@@ -61,6 +61,7 @@
 .report-message-group label{display:block;font-size:12px;font-weight:600;margin:10px 0 7px}
 .report-message-group textarea{width:100%;min-height:86px;max-height:220px;padding:10px 12px;border:1px solid #dadcd6;border-radius:10px;background:white;color:var(--ink);font-family:inherit;font-size:13px;line-height:1.5;resize:vertical;box-sizing:border-box}
 .report-message-group textarea:focus{outline:2px solid var(--brand);border-color:var(--brand)}
+.area-panel h1{font-size:24px!important;letter-spacing:-.6px;line-height:1.22}
 .legend-swatch{background:#ff6b6b;border-color:#ffaca6}
 dialog#report-dialog.report-dialog{padding:0!important;max-width:540px;width:calc(100% - 32px);height:min(88vh,88dvh,840px);max-height:min(88vh,88dvh,840px);border-radius:20px;overflow:hidden!important;box-shadow:0 24px 80px rgba(27,36,27,.28);border:1px solid var(--line);background:#fff}
 dialog#report-dialog.report-dialog[open]{display:flex!important;flex-direction:column!important}
