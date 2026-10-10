@@ -179,18 +179,30 @@ function dashboard_count(array $daily,string $from):int{return array_sum(array_m
 $today=new DateTimeImmutable('today',new DateTimeZone('Asia/Kolkata'));
 require DIR_INC.'/content-start.php';
 ?>
-<div class="admin-shell">
-<span class="eyebrow">HerMap · private moderation</span><h1><?= $loggedIn ? 'A community, with care.' : 'Moderator sign in' ?></h1>
-<?php if($error): ?><p class="notice-box" role="alert"><?= ps_escape($error) ?></p><?php endif; ?>
 <?php if(!$loggedIn): ?>
-<p class="lead">Authorised reviewers only. A secure username and password are required.</p>
-<form method="post" action="<?= ps_escape(ps_url('admin')) ?>" class="admin-login panel">
- <input type="hidden" name="csrf" value="<?= ps_escape($_SESSION['csrf']) ?>"><input type="hidden" name="action" value="login">
- <label for="admin-username">Username</label><input id="admin-username" name="username" autocomplete="username" maxlength="100" required>
- <label for="admin-password">Password</label><input id="admin-password" type="password" name="password" autocomplete="current-password" maxlength="256" required>
- <button class="button button-primary" type="submit">Sign in <?= ps_icon('arrow-right') ?></button>
-</form>
+<div class="admin-login-wrap">
+  <div class="admin-login-card panel">
+    <div class="admin-login-header">
+      <span class="eyebrow"><span class="status-dot"></span>HerMap · private moderation</span>
+      <h1>Moderator sign in</h1>
+      <p class="lead">Authorised reviewers only. A secure username and password are required.</p>
+    </div>
+    <?php if($error): ?><p class="notice-box" role="alert"><?= ps_escape($error) ?></p><?php endif; ?>
+    <form method="post" action="<?= ps_escape(ps_url('admin')) ?>" class="admin-login">
+      <input type="hidden" name="csrf" value="<?= ps_escape($_SESSION['csrf']) ?>">
+      <input type="hidden" name="action" value="login">
+      <label for="admin-username">Username</label>
+      <input id="admin-username" name="username" autocomplete="username" maxlength="100" required>
+      <label for="admin-password">Password</label>
+      <input id="admin-password" type="password" name="password" autocomplete="current-password" maxlength="256" required>
+      <button class="button button-primary" type="submit">Sign in <?= ps_icon('arrow-right') ?></button>
+    </form>
+  </div>
+</div>
 <?php else: ?>
+<div class="admin-shell">
+<span class="eyebrow">HerMap · private moderation</span><h1>A community, with care.</h1>
+<?php if($error): ?><p class="notice-box" role="alert"><?= ps_escape($error) ?></p><?php endif; ?>
 <div class="admin-toolbar"><p>Private moderation and community intake dashboard.</p><form method="post"><input type="hidden" name="csrf" value="<?= ps_escape($_SESSION['csrf']) ?>"><button class="button button-secondary" name="action" value="logout">Sign out (<?= ps_escape($_SESSION['admin']) ?>)</button></form></div>
 <?php if(isset($_GET['reviewed'])): ?><p class="notice-box" role="status">Review saved. Approved reports wait <?= PUBLICATION_DELAY_HOURS ?> hours and must meet the public grouping threshold.</p><?php endif; ?>
 <?php if(isset($_GET['updated'])): ?><p class="notice-box" role="status">Inquiry status/note updated successfully.</p><?php endif; ?>
