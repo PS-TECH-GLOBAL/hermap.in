@@ -71,34 +71,34 @@ header('Cache-Control: no-store');
   <div class="basemap-note">Survey of India outline · Approximate PIN centres · Tap India for a broad area summary</div>
   <a class="map-scroll-link" href="#community-info">FAQs &amp; support <?= ps_icon('arrow-down') ?></a>
 </section>
-<section class="public-metrics" aria-label="Community totals">
+<section class="public-metrics" id="community-metrics" aria-label="Community totals">
   <div>
     <div class="metric-value">
       <span class="metric-icon" aria-hidden="true"><?= ps_icon('clock-rotate-left') ?></span>
       <strong id="reports-7d">—</strong>
     </div>
-    <span>Reports received · last 7 days</span>
+    <span class="metric-label">Reports received · last 7 days</span>
   </div>
   <div>
     <div class="metric-value">
       <span class="metric-icon" aria-hidden="true"><?= ps_icon('shield-halved') ?></span>
       <strong id="total-reports">—</strong>
     </div>
-    <span>Reports received · all time</span>
+    <span class="metric-label">Reports received · all time</span>
   </div>
   <div>
     <div class="metric-value">
       <span class="metric-icon" aria-hidden="true"><?= ps_icon('users') ?></span>
       <strong id="live-visits">—</strong>
     </div>
-    <span><i class="live-dot" aria-hidden="true"></i> Active visitors</span>
+    <span class="metric-label"><i class="live-dot" aria-hidden="true"></i> Active visitors</span>
   </div>
   <div>
     <div class="metric-value">
       <span class="metric-icon" aria-hidden="true"><?= ps_icon('globe') ?></span>
       <strong id="total-visits">—</strong>
     </div>
-    <span>Total visitors since launch</span>
+    <span class="metric-label">Total visitors since launch</span>
   </div>
   <p id="stats-note">Unique visits tracked by 24-hour session. Received reports include submissions awaiting review.</p>
 </section>
