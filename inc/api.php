@@ -18,16 +18,30 @@ try {
     $stmt=$db->prepare("SELECT p.id,p.pincode,p.office_name,p.state_id,p.city_id,p.district,p.latitude,p.longitude,s.name state_name,c.name city_name FROM hm_post_offices p JOIN hm_states s ON s.id=p.state_id LEFT JOIN hm_cities c ON c.id=p.city_id WHERE $where ORDER BY p.pincode,p.office_name LIMIT 15");$stmt->execute($args);ps_json(['items'=>$stmt->fetchAll(),'note'=>'PIN/post-office centres are approximate; PINs are not polygons.']);
   }
   if($name==='summary' || $name==='zones') {
-    $days=(int)($_GET['days'] ?? 90);if(!in_array($days,[30,90,365],true)) throw new HerMapError('Choose a valid reporting window.');
+    $rawDays=strtolower(trim((string)($_GET['days'] ?? '90')));
+    if(!in_array($rawDays,['7','30','90','365','all','0'],true)) throw new HerMapError('Choose a valid reporting window.');
+    $days=($rawDays==='all'||$rawDays==='0')?'all':(int)$rawDays;
     if($name==='summary') {
       $x=$y=null;
       if(isset($_GET['x'],$_GET['y'])) { $x=filter_var($_GET['x'],FILTER_VALIDATE_INT);$y=filter_var($_GET['y'],FILTER_VALIDATE_INT);if($x===false||$y===false||$x<272||$x>390||$y<24||$y>148) throw new HerMapError('Invalid area.',422); }
       if(isset($_GET['lng'],$_GET['lat'])) {$lng=filter_var($_GET['lng'],FILTER_VALIDATE_FLOAT);$lat=filter_var($_GET['lat'],FILTER_VALIDATE_FLOAT);if($lng===false||$lat===false||!ps_in_india((float)$lng,(float)$lat)) throw new HerMapError('Choose a location within the official India outline.',422);$x=(int)floor($lng*4);$y=(int)floor($lat*4);}
       ps_json(ps_summary($x,$y,$days));
     }
-    $stmt=ps_db()->prepare("SELECT cell_x,cell_y,COUNT(*) n FROM hm_incidents WHERE status='approved' AND approved_at<=? AND incident_date>=? GROUP BY cell_x,cell_y HAVING n>=? LIMIT 10000");
-    $stmt->execute([gmdate('Y-m-d H:i:s',time()-PUBLICATION_DELAY_HOURS*3600),(new DateTimeImmutable('today',new DateTimeZone('Asia/Kolkata')))->sub(new DateInterval('P'.($days-1).'D'))->format('Y-m-d'),PUBLIC_MIN_REPORTS]);
-    $features=[];foreach($stmt->fetchAll() as $row){$features[]=['type'=>'Feature','geometry'=>['type'=>'Point','coordinates'=>[((int)$row['cell_x']+.5)/4,((int)$row['cell_y']+.5)/4]],'properties'=>['x'=>(int)$row['cell_x'],'y'=>(int)$row['cell_y'],'count'=>ps_count_band((int)$row['n']),'level'=>(int)min(3,floor((int)$row['n']/10))]];}
+    $whereZones="r.status='approved' AND r.approved_at<=?";
+    $paramsZones=[gmdate('Y-m-d H:i:s',time()-PUBLICATION_DELAY_HOURS*3600)];
+    if($days!=='all'){
+      $whereZones.=" AND r.incident_date>=?";
+      $paramsZones[]=(new DateTimeImmutable('today',new DateTimeZone('Asia/Kolkata')))->sub(new DateInterval('P'.($days-1).'D'))->format('Y-m-d');
+    }
+    $stmt=ps_db()->prepare("SELECT r.cell_x, r.cell_y, COUNT(*) n, MAX(p.office_name) office_name, MAX(p.pincode) pincode, MAX(p.district) district, MAX(c.name) city_name, MAX(s.name) state_name FROM hm_incidents r LEFT JOIN hm_post_offices p ON p.id=r.post_office_id LEFT JOIN hm_states s ON s.id=r.state_id LEFT JOIN hm_cities c ON c.id=r.city_id WHERE $whereZones GROUP BY r.cell_x, r.cell_y HAVING n>=? LIMIT 10000");
+    $paramsZones[]=PUBLIC_MIN_REPORTS;
+    $stmt->execute($paramsZones);
+    $features=[];
+    foreach($stmt->fetchAll() as $row){
+      $parts=array_filter([$row['office_name'],($row['city_name']&&$row['city_name']!==$row['office_name']?$row['city_name']:$row['district']),$row['state_name']]);
+      $areaName=$parts?(implode(', ',$parts).($row['pincode']?' (PIN '.$row['pincode'].')':'')):'Selected area';
+      $features[]=['type'=>'Feature','geometry'=>['type'=>'Point','coordinates'=>[((int)$row['cell_x']+.5)/4,((int)$row['cell_y']+.5)/4]],'properties'=>['x'=>(int)$row['cell_x'],'y'=>(int)$row['cell_y'],'name'=>$areaName,'count'=>ps_count_band((int)$row['n']),'level'=>(int)min(3,floor((int)$row['n']/10))]];
+    }
     ps_json(['type'=>'FeatureCollection','features'=>$features]);
   }
   if($name==='stats') ps_json(ps_site_stats());

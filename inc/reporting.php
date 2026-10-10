@@ -191,27 +191,113 @@ function ps_count_band(int $count):string {
     if($count<PUBLIC_MIN_REPORTS) return 'Insufficient data';
     $base=(int)(floor($count/5)*5);return $base.'–'.($base+4);
 }
-function ps_summary(?int $x,?int $y,int $days):array {
-    $where="status='approved' AND approved_at<=? AND incident_date>=?";
-    $params=[gmdate('Y-m-d H:i:s',time()-PUBLICATION_DELAY_HOURS*3600),(new DateTimeImmutable('today',new DateTimeZone('Asia/Kolkata')))->sub(new DateInterval('P'.($days-1).'D'))->format('Y-m-d')];
-    if($x!==null && $y!==null){$where.=' AND cell_x=? AND cell_y=?';$params[]=$x;$params[]=$y;}
-    $db=ps_db();$stmt=$db->prepare("SELECT COUNT(*) FROM hm_incidents WHERE $where");$stmt->execute($params);$count=(int)$stmt->fetchColumn();
-    $result=['available'=>$count>=PUBLIC_MIN_REPORTS,'total'=>ps_count_band($count),'window_days'=>$days,'category'=>null,'hour'=>null,'day'=>null,'categories'=>[],'cell'=>$x===null?null:['x'=>$x,'y'=>$y,'bounds'=>[$x/4,$y/4,($x+1)/4,($y+1)/4]],'note'=>'Approved community reports, not independently verified. Counts are grouped in bands of five; small groups are withheld.'];
+function ps_summary(?int $x,?int $y,int|string $days):array {
+    $isLifetime=($days==='all'||$days===0||$days==='0');
+    $where="r.status='approved' AND r.approved_at<=?";
+    $params=[gmdate('Y-m-d H:i:s',time()-PUBLICATION_DELAY_HOURS*3600)];
+    if(!$isLifetime){
+        $numDays=max(1,(int)$days);
+        $where.=" AND r.incident_date>=?";
+        $params[]=(new DateTimeImmutable('today',new DateTimeZone('Asia/Kolkata')))->sub(new DateInterval('P'.($numDays-1).'D'))->format('Y-m-d');
+    }
+    if($x!==null && $y!==null){$where.=' AND r.cell_x=? AND r.cell_y=?';$params[]=$x;$params[]=$y;}
+    $db=ps_db();$stmt=$db->prepare("SELECT COUNT(*) FROM hm_incidents r WHERE $where");$stmt->execute($params);$count=(int)$stmt->fetchColumn();
+
+    $areaName='India overview';
+    if($x!==null && $y!==null){
+        $areaName='Selected area';
+        $nameStmt=$db->prepare("
+            SELECT p.office_name, p.district, p.pincode, c.name as city_name, s.name as state_name
+            FROM hm_incidents r
+            JOIN hm_post_offices p ON p.id = r.post_office_id
+            JOIN hm_states s ON s.id = r.state_id
+            LEFT JOIN hm_cities c ON c.id = r.city_id
+            WHERE r.cell_x = ? AND r.cell_y = ?
+            GROUP BY p.id
+            ORDER BY COUNT(*) DESC
+            LIMIT 1
+        ");
+        $nameStmt->execute([$x,$y]);
+        $locRow=$nameStmt->fetch(PDO::FETCH_ASSOC);
+        if(!$locRow){
+            $poStmt=$db->prepare("
+                SELECT p.office_name, p.district, p.pincode, c.name as city_name, s.name as state_name
+                FROM hm_post_offices p
+                JOIN hm_states s ON s.id = p.state_id
+                LEFT JOIN hm_cities c ON c.id = p.city_id
+                WHERE p.latitude IS NOT NULL AND p.longitude IS NOT NULL
+                  AND FLOOR(p.longitude*4) = ? AND FLOOR(p.latitude*4) = ?
+                LIMIT 1
+            ");
+            $poStmt->execute([$x,$y]);
+            $locRow=$poStmt->fetch(PDO::FETCH_ASSOC);
+        }
+        if($locRow){
+            $parts=array_filter([
+                $locRow['office_name'],
+                ($locRow['city_name'] && $locRow['city_name']!==$locRow['office_name'] ? $locRow['city_name'] : $locRow['district']),
+                $locRow['state_name']
+            ]);
+            $areaName=implode(', ',$parts).($locRow['pincode'] ? ' (PIN '.$locRow['pincode'].')' : '');
+        }
+    }
+
+    $result=[
+        'available'=>$count>=PUBLIC_MIN_REPORTS,
+        'total'=>ps_count_band($count),
+        'window_days'=>$days,
+        'area_name'=>$areaName,
+        'category'=>null,
+        'hour'=>null,
+        'day'=>null,
+        'categories'=>[],
+        'cell'=>$x===null?null:['x'=>$x,'y'=>$y,'bounds'=>[$x/4,$y/4,($x+1)/4,($y+1)/4]],
+        'note'=>'Approved community reports, not independently verified. Counts are grouped in bands of five; small groups are withheld.'
+    ];
     if(!$result['available']) return $result;
-    $stmt=$db->prepare("SELECT category,COUNT(*) n FROM hm_incidents WHERE $where GROUP BY category ORDER BY n DESC,category");$stmt->execute($params);$categories=$stmt->fetchAll();
-    foreach($categories as $row) if((int)$row['n']>=PUBLIC_MIN_REPORTS) $result['categories'][]=['label'=>INCIDENT_CATEGORIES[$row['category']],'count'=>ps_count_band((int)$row['n'])];
-    if($categories && (int)$categories[0]['n']>=PUBLIC_MIN_REPORTS) $result['category']=INCIDENT_CATEGORIES[$categories[0]['category']];
-    $stmt=$db->prepare("SELECT incident_hour,COUNT(*) n FROM hm_incidents WHERE $where GROUP BY incident_hour ORDER BY n DESC,incident_hour LIMIT 1");$stmt->execute($params);$hour=$stmt->fetch();
+    $stmt=$db->prepare("SELECT r.category,COUNT(*) n FROM hm_incidents r WHERE $where GROUP BY r.category ORDER BY n DESC,r.category");$stmt->execute($params);$categories=$stmt->fetchAll();
+    foreach($categories as $row) if((int)$row['n']>=PUBLIC_MIN_REPORTS) $result['categories'][]=['label'=>INCIDENT_CATEGORIES[$row['category']]??$row['category'],'count'=>ps_count_band((int)$row['n'])];
+    if($categories && (int)$categories[0]['n']>=PUBLIC_MIN_REPORTS) $result['category']=INCIDENT_CATEGORIES[$categories[0]['category']]??$categories[0]['category'];
+    $stmt=$db->prepare("SELECT r.incident_hour,COUNT(*) n FROM hm_incidents r WHERE $where GROUP BY r.incident_hour ORDER BY n DESC,r.incident_hour LIMIT 1");$stmt->execute($params);$hour=$stmt->fetch();
     if($hour && (int)$hour['n']>=PUBLIC_MIN_REPORTS){$h=(int)$hour['incident_hour'];$result['hour']=date('g a',mktime($h,0)).'–'.date('g a',mktime(($h+1)%24,0)).' IST';}
-    $stmt=$db->prepare("SELECT WEEKDAY(incident_date) weekday,COUNT(*) n FROM hm_incidents WHERE $where GROUP BY weekday ORDER BY n DESC,weekday LIMIT 1");$stmt->execute($params);$day=$stmt->fetch();
+    $stmt=$db->prepare("SELECT WEEKDAY(r.incident_date) weekday,COUNT(*) n FROM hm_incidents r WHERE $where GROUP BY weekday ORDER BY n DESC,weekday LIMIT 1");$stmt->execute($params);$day=$stmt->fetch();
     if($day && (int)$day['n']>=PUBLIC_MIN_REPORTS) $result['day']=['Monday','Tuesday','Wednesday','Thursday','Friday','Saturday','Sunday'][(int)$day['weekday']];
-    $msgStmt=$db->prepare("SELECT message_encrypted,category,incident_date FROM hm_incidents WHERE $where AND share_message=1 AND message_encrypted IS NOT NULL ORDER BY approved_at DESC LIMIT 10");
+    $msgStmt=$db->prepare("
+        SELECT r.message_encrypted, r.category, r.place_type, r.incident_date, r.incident_hour, r.incident_minute,
+               p.office_name, p.pincode, p.district, c.name as city_name, s.name as state_name
+        FROM hm_incidents r
+        JOIN hm_post_offices p ON p.id = r.post_office_id
+        JOIN hm_states s ON s.id = r.state_id
+        LEFT JOIN hm_cities c ON c.id = r.city_id
+        WHERE $where AND r.share_message = 1 AND r.message_encrypted IS NOT NULL
+        ORDER BY r.approved_at DESC
+        LIMIT 15
+    ");
     $msgStmt->execute($params);
     $messages=[];
     foreach($msgStmt->fetchAll() as $row){
         $txt=ps_decrypt_string($row['message_encrypted']);
         if($txt!=='' && $txt!=='Unable to decrypt'){
-            $messages[]=['category'=>INCIDENT_CATEGORIES[$row['category']] ?? $row['category'],'message'=>$txt,'date'=>$row['incident_date']];
+            $h=(int)$row['incident_hour'];
+            $m=(int)$row['incident_minute'];
+            $timeStr=date('g:i A',mktime($h,$m)).' IST';
+            $formattedDate=date('d M Y',strtotime($row['incident_date']));
+            $locParts=array_filter([
+                $row['office_name'],
+                ($row['city_name'] && $row['city_name']!==$row['office_name'] ? $row['city_name'] : $row['district']),
+                $row['state_name']
+            ]);
+            $messages[]=[
+                'category'=>INCIDENT_CATEGORIES[$row['category']] ?? $row['category'],
+                'place_type'=>PLACE_TYPES[$row['place_type']] ?? ucfirst((string)$row['place_type']),
+                'location'=>implode(', ',$locParts),
+                'pincode'=>(string)$row['pincode'],
+                'office_name'=>(string)$row['office_name'],
+                'date'=>$row['incident_date'],
+                'formatted_date'=>$formattedDate,
+                'time'=>$timeStr,
+                'message'=>$txt
+            ];
         }
     }
     $result['messages']=$messages;
