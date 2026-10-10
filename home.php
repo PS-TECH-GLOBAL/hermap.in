@@ -194,7 +194,7 @@ header('Cache-Control: no-store');
       <label for="new-receipt">Private receipt</label>
       <input id="new-receipt" readonly autocomplete="off">
       <div class="dialog-actions" style="margin-top:14px;">
-        <button class="button button-secondary" type="button" id="copy-receipt">Copy receipt</button>
+        <button class="button button-secondary copy-receipt-btn" type="button" id="copy-receipt"><?= ps_icon('copy') ?> <span id="copy-btn-text">Copy receipt</span></button>
         <button class="button button-primary" type="button" data-close-dialog>Close window</button>
       </div>
       <p id="receipt-copy-status" role="status"></p>
@@ -203,7 +203,7 @@ header('Cache-Control: no-store');
       <summary>Check or delete an existing report</summary>
       <form id="receipt-form">
         <label for="existing-receipt">Private receipt</label>
-        <input id="existing-receipt" autocomplete="off" maxlength="48" pattern="[a-f0-9]{48}" required>
+        <input id="existing-receipt" autocomplete="off" maxlength="48" pattern="hermap[0-9]{9}|[a-f0-9]{48}" placeholder="e.g. hermap000000001" required>
         <div class="dialog-actions">
           <button class="button button-secondary" type="submit" name="action" value="status">Check status</button>
           <button class="button button-secondary" type="submit" name="action" value="delete">Delete my report</button>

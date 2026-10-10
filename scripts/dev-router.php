@@ -4,6 +4,10 @@ if (function_exists('header_remove')) {
     header_remove('X-Powered-By');
 }
 
+if (!empty($_SERVER['HTTP_HOST'])) {
+    putenv('SITE_URL=http://' . $_SERVER['HTTP_HOST']);
+}
+
 $path = rawurldecode(parse_url($_SERVER['REQUEST_URI'] ?? '/', PHP_URL_PATH) ?: '/');
 $segments = explode('/', trim(str_replace('\\', '/', $path), '/'));
 $private = ['inc', 'scripts', 'tests', 'database', 'docs', 'node_modules', 'tmp', 'private', 'vendor', '.agents', '.npm-cache', '.git', '.vscode', '.idea'];

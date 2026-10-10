@@ -8,7 +8,6 @@ function check(bool $ok,string $message):void{global $checks;if(!$ok)throw new R
 function fails(callable $callback,int $status):void{try{$callback();throw new RuntimeException('Expected rejection.');}catch(HerMapError $e){check($e->status===$status,'Wrong rejection status.');}}
 try{
  try{$db->query('SELECT COUNT(*) FROM mysql.global_priv');throw new RuntimeException('Runtime database account can read server permissions.');}catch(PDOException $e){check((int)($e->errorInfo[1]??0)===1142,'Unexpected scoped-account denial.');}
- check(ps_totp('GEZDGNBVGY3TQOJQGEZDGNBVGY3TQOJQ',1)==='287082','RFC 6238 TOTP vector failed.');
  check(ps_in_india(74.3,35.2)&&ps_in_india(96,28)&&ps_in_india(77.22,28.64),'Official outline misses expected Indian locations.');
  check(!ps_in_india(65,20),'Outline accepts outside point.');
  $venue=['name'=>'HERMAP TEST VENUE — fictional','website'=>'https://example.com'];$cipher=ps_encrypt_venue($venue);
@@ -92,7 +91,7 @@ try{
  $body['category']='online';$body['online_handle']='@hermap_fictional_test';$body['online_platform']='Example platform';
  $body['share_location']=true;$body['latitude']='28.6139';$body['longitude']='77.209';
  $body['message']='Testing sensitive private description for moderation review.';
- [$status,$text]=$request('/api/reports',$body);$saved=json_decode($text,true);check($status===201&&preg_match('/^[a-f0-9]{48}$/',$saved['receipt']??''),'Real submission did not save.');
+ [$status,$text]=$request('/api/reports',$body);$saved=json_decode($text,true);check($status===201&&preg_match('/^hermap[0-9]{9}$/i',$saved['receipt']??''),'Real submission did not return hermap-9digit receipt format.');
  $stmt=$db->prepare('SELECT * FROM hm_incidents WHERE receipt_hash=?');$stmt->execute([hash('sha256',$saved['receipt'])]);$record=$stmt->fetch();$createdId=$record['id']??null;$countedDay=(new DateTimeImmutable('now',new DateTimeZone('Asia/Kolkata')))->format('Y-m-d'); check($createdId!==null&&$record['status']==='pending','Submission did not enter private queue.');check((int)$record['share_message']===0,'share_message did not default to 0.');check(ps_decrypt_venue($record['venue_encrypted'])['name']===$body['venue_name'],'Private venue not stored encrypted.');
  check(ps_decrypt_venue($record['venue_encrypted'])['handle']===$body['online_handle']&&!str_contains($record['venue_encrypted'],$body['online_handle']),'Online account handle not stored encrypted.');
  check(ps_decrypt_string($record['message_encrypted'])===$body['message'],'Private message not stored encrypted.');
@@ -112,8 +111,13 @@ try{
  if(!$accessPath || !is_file($accessPath)) throw new RuntimeException('Admin access file not found. Set HERMAP_ACCESS_FILE to run tests.');
  $access=file_get_contents($accessPath);preg_match('/^Password: (.+)$/m',$access,$match);$password=trim($match[1]??'');
  preg_match('/^Username: (.+)$/m',$access,$uMatch);$adminUser=trim($uMatch[1]??'') ?: (getenv('ADMIN_USERNAME') ?: 'admin');
- [$status]=$request('/admin',['csrf'=>$adminCsrf,'action'=>'login','username'=>$adminUser,'password'=>$password,'otp'=>'bad'],true);check($status===200,'Unexpected login response.');
- [$status]=$request('/admin',['csrf'=>$adminCsrf,'action'=>'login','username'=>$adminUser,'password'=>$password,'otp'=>ps_totp(getenv('ADMIN_TOTP_SECRET'),(int)floor(time()/30))],true);check($status===303,'Password plus TOTP login failed.');
+ check(!str_contains($text,'name="otp"')&&!str_contains($text,'Authenticator code'),'Authenticator field still required.');
+ [$status,$text]=$request('/admin',['csrf'=>$adminCsrf,'action'=>'login','username'=>$adminUser,'password'=>'invalid-test-password'],true);check($status===200&&str_contains($text,'The username or password was incorrect.')&&str_contains($text,'Moderator sign in'),'Incorrect password accepted.');
+ [$status,$text]=$request('/admin',['csrf'=>$adminCsrf,'action'=>'login','username'=>$adminUser],true);check($status===200&&str_contains($text,'Moderator sign in'),'Missing password accepted.');
+ [$status,$text]=$request('/admin',['csrf'=>$adminCsrf,'action'=>'login','username'=>'nonexistent-test-user','password'=>$password],true);check($status===200&&str_contains($text,'The username or password was incorrect.'),'Unknown username accepted.');
+ if($previousUser=getenv('HERMAP_PREVIOUS_ADMIN_USERNAME')){[$status,$text]=$request('/admin',['csrf'=>$adminCsrf,'action'=>'login','username'=>$previousUser,'password'=>$password],true);check($status===200&&str_contains($text,'Moderator sign in'),'Previous moderator username still accepted.');}
+ [$status,$text]=$request('/admin',['csrf'=>'invalid','action'=>'login','username'=>$adminUser,'password'=>$password],true);check($status===200&&str_contains($text,'Moderator sign in'),'Login bypassed CSRF.');
+ [$status]=$request('/admin',['csrf'=>$adminCsrf,'action'=>'login','username'=>$adminUser,'password'=>$password],true);check($status===303,'Username and password login failed without an authenticator code.');
  [$status,$text]=$request('/admin');check(str_contains($text,'Reports all time')&&str_contains($text,'chart-group')&&str_contains($text,ps_escape($body['venue_name']))&&str_contains($text,ps_escape($body['message']))&&str_contains($text,'Private only (reporter opted out)'),'Dashboard/private queue or message badge missing.');preg_match('/name="csrf" value="([a-f0-9]+)"/',$text,$match);$adminCsrf=$match[1];
  [$status,$text]=$request('/api/admin-stats');$dashboard=json_decode($text,true);check($status===200&&isset($dashboard['metrics']['Reports this week'],$dashboard['daily']),'Live admin dashboard data failed.');
  [$status]=$request('/admin',['csrf'=>'bad','action'=>'approve','report_id'=>$createdId],true);$stmt->execute([hash('sha256',$saved['receipt'])]);check($stmt->fetch()['status']==='pending','Moderation bypassed CSRF.');

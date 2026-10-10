@@ -15,7 +15,6 @@ try {
         ps_rate_limit('admin-login',10);
         $username=trim(substr((string)($_POST['username'] ?? ''),0,100));
         $password=substr((string)($_POST['password'] ?? ''),0,256);
-        $otp=trim((string)($_POST['otp'] ?? ''));
         $authenticatedUser=null;
         $db=ps_db();
         
@@ -24,12 +23,7 @@ try {
         $stmt->execute([$username]);
         $adminRow=$stmt->fetch();
         if($adminRow) {
-            $secret=$adminRow['totp_secret'];
-            $totpOK=false;
-            if(strlen($secret)>=16 && preg_match('/^\d{6}$/',$otp)) {
-                for($offset=-1;$offset<=1;$offset++) $totpOK=$totpOK || hash_equals(ps_totp($secret,(int)floor(time()/30)+$offset),$otp);
-            }
-            if(password_verify($password,$adminRow['password_hash']) && $totpOK) {
+            if($password!=='' && password_verify($password,$adminRow['password_hash'])) {
                 $authenticatedUser=$adminRow['username'];
                 $_SESSION['admin_role']=$adminRow['role'];
                 $db->prepare('UPDATE hm_admins SET last_login_at=UTC_TIMESTAMP() WHERE id=?')->execute([$adminRow['id']]);
@@ -37,18 +31,13 @@ try {
         } else {
             // Fallback to .env admin credentials
             $envUser=getenv('ADMIN_USERNAME') ?: '';
-            $secret=getenv('ADMIN_TOTP_SECRET') ?: '';
-            $totpOK=false;
-            if(strlen($secret)>=16 && preg_match('/^\d{6}$/',$otp)) {
-                for($offset=-1;$offset<=1;$offset++) $totpOK=$totpOK || hash_equals(ps_totp($secret,(int)floor(time()/30)+$offset),$otp);
-            }
-            if($envUser!=='' && hash_equals($envUser,$username) && password_verify($password,getenv('ADMIN_PASSWORD_HASH') ?: '') && $totpOK) {
+            if($envUser!=='' && hash_equals($envUser,$username) && $password!=='' && password_verify($password,getenv('ADMIN_PASSWORD_HASH') ?: '')) {
                 $authenticatedUser=$envUser;
                 $_SESSION['admin_role']='superadmin';
             }
         }
         
-        if(!$authenticatedUser) throw new HerMapError('The username, password or authenticator code was incorrect.',403);
+        if(!$authenticatedUser) throw new HerMapError('The username or password was incorrect.',403);
         session_regenerate_id(true);$_SESSION['csrf']=bin2hex(random_bytes(32));$_SESSION['admin']=$authenticatedUser;$_SESSION['admin_login']=$_SESSION['admin_seen']=time();
         header('Location: '.ps_url('admin'),true,303);exit;
     }
@@ -194,12 +183,11 @@ require DIR_INC.'/content-start.php';
 <span class="eyebrow">HerMap · private moderation</span><h1><?= $loggedIn ? 'A community, with care.' : 'Moderator sign in' ?></h1>
 <?php if($error): ?><p class="notice-box" role="alert"><?= ps_escape($error) ?></p><?php endif; ?>
 <?php if(!$loggedIn): ?>
-<p class="lead">Authorised reviewers only. A password and an authenticator code are required.</p>
+<p class="lead">Authorised reviewers only. A secure username and password are required.</p>
 <form method="post" action="<?= ps_escape(ps_url('admin')) ?>" class="admin-login panel">
  <input type="hidden" name="csrf" value="<?= ps_escape($_SESSION['csrf']) ?>"><input type="hidden" name="action" value="login">
  <label for="admin-username">Username</label><input id="admin-username" name="username" autocomplete="username" maxlength="100" required>
  <label for="admin-password">Password</label><input id="admin-password" type="password" name="password" autocomplete="current-password" maxlength="256" required>
- <label for="admin-otp">Authenticator code</label><input id="admin-otp" name="otp" inputmode="numeric" pattern="[0-9]{6}" autocomplete="one-time-code" maxlength="6" required>
  <button class="button button-primary" type="submit">Sign in <?= ps_icon('arrow-right') ?></button>
 </form>
 <?php else: ?>

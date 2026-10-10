@@ -62,8 +62,9 @@ try {
   }
   if($name==='receipt') {
     ps_require_csrf((string)($body['csrf'] ?? ''));ps_rate_limit('receipt',20);
-    $token=(string)($body['receipt'] ?? '');if(!preg_match('/^[a-f0-9]{48}$/',$token)) throw new HerMapError('Check your receipt.',422);
-    $hash=hash('sha256',$token);$stmt=ps_db()->prepare('SELECT id,status FROM hm_incidents WHERE receipt_hash=?');$stmt->execute([$hash]);$report=$stmt->fetch();
+    $token=trim((string)($body['receipt'] ?? ''));
+    if(!preg_match('/^(hermap[0-9]{9}|[a-f0-9]{48})$/i',$token)) throw new HerMapError('Please enter a valid receipt number (e.g. hermap000000001).',422);
+    $hash=hash('sha256',strtolower($token));$stmt=ps_db()->prepare('SELECT id,status FROM hm_incidents WHERE receipt_hash=?');$stmt->execute([$hash]);$report=$stmt->fetch();
     if(!$report) throw new HerMapError('No report was found for this receipt.',404);
     if(($body['action'] ?? '')==='delete') {ps_db()->prepare('DELETE FROM hm_incidents WHERE id=?')->execute([$report['id']]);ps_json(['message'=>'Your incident record and venue details have been deleted. Aggregate visit/submission counters and non-identifying review logs remain.']);}
     ps_json(['status'=>$report['status'],'message'=>'Receipt status is private. Approved reports enter eligible grouped summaries only after the publication delay.']);

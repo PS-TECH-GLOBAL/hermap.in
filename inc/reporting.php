@@ -145,7 +145,7 @@ function ps_save_incident(array $body):array {
     $duplicateParts=[$category,$place,$location['pincode'],$date,$time,mb_strtolower($name)];
     if($online['handle']!=='' || $online['platform']!=='')array_push($duplicateParts,mb_strtolower($online['handle']),mb_strtolower($online['platform']));
     $fingerprint=hash_hmac('sha256',implode('|',$duplicateParts),ps_secret());
-    $receipt=bin2hex(random_bytes(24));$id=bin2hex(random_bytes(16));$db=ps_db();$db->beginTransaction();
+    $db=ps_db();$receipt=ps_next_receipt($db);$id=bin2hex(random_bytes(16));$db->beginTransaction();
     try {
         $stmt=$db->prepare('INSERT INTO hm_incidents(id,category,place_type,state_id,city_id,post_office_id,cell_x,cell_y,incident_date,incident_hour,incident_minute,venue_encrypted,message_encrypted,share_message,receipt_hash,duplicate_hash,delete_after) VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)');
         $stmt->execute([$id,$category,$place,$state,$location['city_id'],$office,$cellX,$cellY,$date,(int)$when->format('G'),(int)$when->format('i'),ps_encrypt_venue(['name'=>$name,'website'=>$website]+$online+$point),ps_encrypt_string($message),$shareMessage,hash('sha256',$receipt),$fingerprint,gmdate('Y-m-d H:i:s',time()+400*86400)]);
@@ -153,6 +153,19 @@ function ps_save_incident(array $body):array {
         $db->commit();
     }catch(PDOException $e){$db->rollBack();if($e->getCode()==='23000') throw new HerMapError('A matching report already exists. Please avoid submitting the same experience twice.',409);throw $e;}catch(Throwable $e){$db->rollBack();throw $e;}
     return ['message'=>'Your report was saved for private review. It is not public. Keep this receipt to check its status or request deletion.','receipt'=>$receipt];
+}
+function ps_next_receipt(PDO $db): string {
+    try {
+        $db->exec('INSERT INTO hm_receipt_sequence VALUES ()');
+        $seq = (int)$db->lastInsertId();
+    } catch (Throwable $e) {
+        $seq = 0;
+    }
+    if ($seq <= 0) {
+        $count = (int)$db->query('SELECT COUNT(*) FROM hm_incidents')->fetchColumn();
+        $seq = $count + 1;
+    }
+    return sprintf('hermap%09d', $seq);
 }
 function ps_online_details(array $body,string $category,string $place):array {
     $details=['handle'=>'','platform'=>''];
@@ -250,12 +263,6 @@ function ps_start_visit():string {
         $db->commit();
     }catch(Throwable $e){$db->rollBack();throw $e;}
     return $token;
-}
-function ps_totp(string $secret,int $step):string {
-    $alphabet='ABCDEFGHIJKLMNOPQRSTUVWXYZ234567';$bits='';foreach(str_split(strtoupper($secret)) as $c){$pos=strpos($alphabet,$c);if($pos===false) return ''; $bits.=str_pad(decbin($pos),5,'0',STR_PAD_LEFT);}
-    $key='';for($i=0;$i+8<=strlen($bits);$i+=8)$key.=chr(bindec(substr($bits,$i,8)));
-    $hash=hash_hmac('sha1',pack('N2',0,$step),$key,true);$offset=ord($hash[19])&15;$num=unpack('N',substr($hash,$offset,4))[1]&0x7fffffff;
-    return str_pad((string)($num%1000000),6,'0',STR_PAD_LEFT);
 }
 function ps_admin_logged_in(bool $touch=true):bool {
     if(PROD && (empty($_SERVER['HTTPS']) || $_SERVER['HTTPS']==='off'))return false;

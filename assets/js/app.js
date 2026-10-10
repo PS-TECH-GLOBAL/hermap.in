@@ -26,7 +26,26 @@
  // Keep the private receipt available until the request finishes.
  dialog.addEventListener('cancel',e=>{if(submitting)e.preventDefault();});dialog.querySelector('[data-close-dialog]').addEventListener('click',e=>{if(submitting)e.stopImmediatePropagation();},true);dialog.addEventListener('click',e=>{if(submitting&&e.target===dialog)e.stopImmediatePropagation();},true);
  dialog.addEventListener('close',()=>{openVersion++;cityVersion++;form.reset();form.hidden=false;if($('report-dialog-footer'))$('report-dialog-footer').hidden=false;updateVenue();clearPins();options($('report-city'),[],'All in selected state');if($('report-message-count'))$('report-message-count').textContent='0/1000';$('report-result').textContent='';$('saved-receipt').hidden=true;$('new-receipt').value='';$('existing-receipt').value='';$('receipt-result').textContent='';$('receipt-copy-status').textContent='';$('receipt-tools').open=false;challenge=null;});
- $('copy-receipt').addEventListener('click',async()=>{try{await navigator.clipboard.writeText($('new-receipt').value);$('receipt-copy-status').textContent='Copied. Save it somewhere private.';}catch{$('new-receipt').focus();$('new-receipt').select();$('receipt-copy-status').textContent='Select and copy this receipt to keep it.';}});
+ let copyTimer=null;
+ $('copy-receipt')?.addEventListener('click',async()=>{
+  clearTimeout(copyTimer);
+  const btn=$('copy-receipt'),input=$('new-receipt'),status=$('receipt-copy-status');
+  try{
+   await navigator.clipboard.writeText(input.value);
+   btn.classList.add('copied-success');
+   btn.innerHTML='<i class="fa-solid fa-check" aria-hidden="true"></i> <span>Copied!</span>';
+   input.classList.add('receipt-highlight');
+   if(status)status.textContent='Copied to clipboard. Save it somewhere private.';
+  }catch{
+   input.focus();input.select();
+   if(status)status.textContent='Select and copy this receipt to keep it.';
+  }
+  copyTimer=setTimeout(()=>{
+   btn.classList.remove('copied-success');
+   input.classList.remove('receipt-highlight');
+   btn.innerHTML='<i class="fa-solid fa-copy" aria-hidden="true"></i> <span>Copy receipt</span>';
+  },2500);
+ });
  $('receipt-form').addEventListener('submit',async e=>{e.preventDefault();const action=e.submitter?.value||'status';$('receipt-result').textContent='Checking your receipt…';try{if(!challenge)await newChallenge();if(!challenge)throw new Error('Refresh the human check first.');const data=await api('receipt',{csrf:challenge.csrf,receipt:$('existing-receipt').value.trim(),action});$('receipt-result').textContent=(data.status?`Status: ${data.status}. `:'')+data.message;if(action==='delete'){$('existing-receipt').value='';$('new-receipt').value='';$('saved-receipt').hidden=true;form.hidden=false;if($('report-dialog-footer'))$('report-dialog-footer').hidden=false;window.dispatchEvent(new Event('hermap-report-saved'));}}catch(error){$('receipt-result').textContent=error.message;}});
  if(location.hash==='#report')document.querySelector('[data-open-report]')?.click();
 })();

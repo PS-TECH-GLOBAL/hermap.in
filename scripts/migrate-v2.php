@@ -85,6 +85,14 @@ if (!in_array('share_message', $incCols, true)) {
     echo "✓ Added column 'share_message' to hm_incidents.\n";
 }
 
+// 4c. Create hm_receipt_sequence table if missing
+$db->exec("
+CREATE TABLE IF NOT EXISTS hm_receipt_sequence (
+    id BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+");
+echo "✓ hm_receipt_sequence table verified/created.\n";
+
 // 5. Grant permissions to hermaph_app on all hm_ tables
 try {
     foreach ($db->query("SHOW TABLES LIKE 'hm_%'")->fetchAll(PDO::FETCH_COLUMN) as $ownedTable) {
@@ -98,14 +106,14 @@ try {
 // 6. Seed default admin from .env into hm_admins if table is empty and .env has credentials
 $adminUser = getenv('ADMIN_USERNAME') ?: 'admin';
 $adminPassHash = getenv('ADMIN_PASSWORD_HASH') ?: '';
-$adminTotp = getenv('ADMIN_TOTP_SECRET') ?: '';
 
-if ($adminPassHash !== '' && $adminTotp !== '') {
+if ($adminPassHash !== '') {
     $stmt = $db->prepare("SELECT id FROM hm_admins WHERE username = ?");
     $stmt->execute([$adminUser]);
     if (!$stmt->fetch()) {
         $insert = $db->prepare("INSERT INTO hm_admins (username, password_hash, totp_secret, role, is_active) VALUES (?, ?, ?, 'superadmin', 1)");
-        $insert->execute([$adminUser, $adminPassHash, $adminTotp]);
+        // Retain the legacy column for existing databases; authentication uses passwords only.
+        $insert->execute([$adminUser, $adminPassHash, '']);
         echo "✓ Seeded admin user '{$adminUser}' into hm_admins table.\n";
     }
 }
