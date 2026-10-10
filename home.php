@@ -171,7 +171,7 @@ header('Cache-Control: no-store');
           </div>
         </div>
 
-        <div class="form-row-grid" style="margin-top:12px;">
+        <div class="form-row-grid">
           <div class="form-field">
             <label for="report-date">Incident date</label>
             <input id="report-date" type="date" required max="<?= (new DateTimeImmutable('now', new DateTimeZone('Asia/Kolkata')))->format('Y-m-d') ?>" value="<?= (new DateTimeImmutable('now', new DateTimeZone('Asia/Kolkata')))->format('Y-m-d') ?>">

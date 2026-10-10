@@ -12,7 +12,7 @@
 .sheet-dialog{margin:auto}
 *{scrollbar-width:thin;scrollbar-color:#ff6b6b #f4f0f9}
 ::-webkit-scrollbar{width:5px;height:5px}::-webkit-scrollbar-track{background:#f4f0f9}::-webkit-scrollbar-thumb{background:#ff6b6b;border-radius:5px}
-.report-dialog input:not([type=checkbox]){width:100%;min-height:44px;padding:10px 12px;border:1px solid #dadcd6;border-radius:10px;background:white;color:var(--ink)}
+.report-dialog input:not([type=checkbox]){width:100%;min-height:46px;padding:10px 14px;border:1px solid #dadcd6;border-radius:12px;background:white;color:var(--ink)}
 .report-dialog h3{font-size:18px;font-weight:600;margin:0 0 12px}.report-dialog summary{cursor:pointer;font-size:13px;color:var(--brand);padding:14px 0}
 .human-check{margin-top:24px;background:#faf8fc;border:1px solid var(--line);padding:16px;border-radius:12px}.human-check>label{font-size:14px;font-weight:600}.human-check>div{display:flex;gap:10px;margin-top:10px}.human-check input{max-width:140px}
 .honeypot{position:absolute;width:1px;height:1px;overflow:hidden;clip-path:inset(50%)}
