@@ -20,6 +20,7 @@ CREATE TABLE IF NOT EXISTS hm_incidents (
  cell_x SMALLINT NOT NULL, cell_y SMALLINT NOT NULL,
  incident_date DATE NOT NULL, incident_hour TINYINT UNSIGNED NOT NULL,
  incident_minute TINYINT UNSIGNED NOT NULL, venue_encrypted TEXT NULL, message_encrypted TEXT NULL,
+ share_message TINYINT(1) NOT NULL DEFAULT 0,
  status ENUM('pending','approved','rejected') NOT NULL DEFAULT 'pending',
  receipt_hash CHAR(64) NOT NULL UNIQUE, duplicate_hash CHAR(64) NOT NULL UNIQUE,
  submitted_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP, approved_at DATETIME NULL,

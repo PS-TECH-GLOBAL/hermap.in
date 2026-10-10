@@ -80,6 +80,10 @@ if (!in_array('message_encrypted', $incCols, true)) {
     $db->exec("ALTER TABLE hm_incidents ADD COLUMN message_encrypted TEXT NULL AFTER venue_encrypted");
     echo "✓ Added column 'message_encrypted' to hm_incidents.\n";
 }
+if (!in_array('share_message', $incCols, true)) {
+    $db->exec("ALTER TABLE hm_incidents ADD COLUMN share_message TINYINT(1) NOT NULL DEFAULT 0 AFTER message_encrypted");
+    echo "✓ Added column 'share_message' to hm_incidents.\n";
+}
 
 // 5. Grant permissions to hermaph_app on all hm_ tables
 try {

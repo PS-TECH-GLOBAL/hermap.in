@@ -36,7 +36,16 @@ header('Cache-Control: no-store');
     <div class="area-heading"><span class="area-icon"><?= ps_icon('location-dot') ?></span><div><span class="small-label">You’re exploring</span><h2 id="area-name">India overview</h2></div><button class="icon-button" id="reset-area" type="button" aria-label="Reset India view"><?= ps_icon('arrow-rotate-left') ?></button></div>
     <label class="small-label filter-label" for="time-window">Reporting window</label>
     <select id="time-window"><option value="30">Past 30 days</option><option value="90" selected>Past 90 days</option><option value="365">Past 12 months</option></select>
-    <div class="empty-state" role="status" aria-live="polite"><strong id="area-total">Loading report summary…</strong><p id="area-summary">No data does not mean an area is safe.</p><dl id="area-patterns" hidden></dl><ul id="area-categories" hidden></ul></div>
+    <div class="empty-state" role="status" aria-live="polite">
+      <strong id="area-total">Loading report summary…</strong>
+      <p id="area-summary">No data does not mean an area is safe.</p>
+      <dl id="area-patterns" hidden></dl>
+      <ul id="area-categories" hidden></ul>
+      <div id="area-messages-wrap" class="area-messages-wrap" hidden>
+        <span class="small-label" style="display:block; margin:14px 0 8px; font-weight:600; color:var(--brand); text-align:left;"><?= ps_icon('comment-dots') ?> Community experiences (shared with consent)</span>
+        <ul id="area-messages" class="area-messages-list"></ul>
+      </div>
+    </div>
     <a class="text-link" href="<?= ps_escape(ps_url('methodology')) ?>">Understand the map <?= ps_icon('arrow-right') ?></a>
     <div class="care-note"><?= ps_icon('lock') ?><span>No sign-up. No reporting fee.<br>Your privacy comes first.</span></div>
   </section>
@@ -163,11 +172,16 @@ header('Cache-Control: no-store');
       <p class="form-hint">Date and time stay private. Report only incidents within the past year. For online incidents, select a relevant broad locality without identifying anyone.</p>
       <div class="report-message-group">
         <label for="report-message">What happened? (optional message · up to 1,000 characters)</label>
-        <textarea id="report-message" maxlength="1000" rows="3" placeholder="Briefly describe what happened without sharing real names, phone numbers, or private identities. This message is encrypted for private moderator review." aria-describedby="report-message-hint"></textarea>
+        <textarea id="report-message" maxlength="1000" rows="3" placeholder="Briefly describe what happened without sharing real names, phone numbers, or private identities." aria-describedby="report-message-hint"></textarea>
         <div class="field-meta" style="display:flex; justify-content:space-between; align-items:center; margin-top:4px;">
-          <p id="report-message-hint" class="form-hint" style="margin:0;">Max 1,000 characters. Encrypted for private moderation review; never shown on the public map.</p>
+          <p id="report-message-hint" class="form-hint" style="margin:0;">Max 1,000 characters. Encrypted in storage.</p>
           <span id="report-message-count" class="form-hint" style="margin:0; font-variant-numeric:tabular-nums; flex-shrink:0;">0/1000</span>
         </div>
+        <label class="checkbox-label" style="margin-top:10px;">
+          <input type="checkbox" id="report-share-message" name="share_message">
+          <span>Allow this message to be shown publicly so other people can understand the situation better.</span>
+        </label>
+        <p class="form-hint" style="margin-top:2px;">If checked, moderators may include your message anonymously in the broad area summary after review. Never include real names, phone numbers, or private identities.</p>
       </div>
       <div class="human-check"><label for="report-captcha" id="captcha-question">Loading human check…</label><div><input id="report-captcha" inputmode="numeric" pattern="[0-9]+" maxlength="3" autocomplete="off" required aria-describedby="captcha-help"><button type="button" class="icon-button" id="refresh-captcha" aria-label="Get a new human check"><?= ps_icon('arrow-rotate-left') ?></button></div><p class="form-hint" id="captcha-help">Solve the question. It changes with each attempt and expires after 10 minutes.</p></div>
       <div class="honeypot" aria-hidden="true"><label for="website-check">Leave this empty</label><input id="website-check" tabindex="-1" autocomplete="off"></div>

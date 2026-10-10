@@ -138,6 +138,7 @@ function ps_save_incident(array $body):array {
     if(!in_array($place,['office','cafe','hotel','landmark'],true)) {$name='';$website='';}
     $message=trim((string)($body['message'] ?? ''));
     if(mb_strlen($message)>1000) throw new HerMapError('Message cannot exceed 1,000 characters.',422);
+    $shareMessage=(!empty($body['share_message']) && $body['share_message']!=='false' && $body['share_message']!==false) ? 1 : 0;
     $online=ps_online_details($body,$category,$place);
     $point=ps_optional_location($body,(float)$location['latitude'],(float)$location['longitude']);
     $cellX=(int)floor((float)($point['longitude']!==''?$point['longitude']:$location['longitude'])*4);$cellY=(int)floor((float)($point['latitude']!==''?$point['latitude']:$location['latitude'])*4);
@@ -146,8 +147,8 @@ function ps_save_incident(array $body):array {
     $fingerprint=hash_hmac('sha256',implode('|',$duplicateParts),ps_secret());
     $receipt=bin2hex(random_bytes(24));$id=bin2hex(random_bytes(16));$db=ps_db();$db->beginTransaction();
     try {
-        $stmt=$db->prepare('INSERT INTO hm_incidents(id,category,place_type,state_id,city_id,post_office_id,cell_x,cell_y,incident_date,incident_hour,incident_minute,venue_encrypted,message_encrypted,receipt_hash,duplicate_hash,delete_after) VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)');
-        $stmt->execute([$id,$category,$place,$state,$location['city_id'],$office,$cellX,$cellY,$date,(int)$when->format('G'),(int)$when->format('i'),ps_encrypt_venue(['name'=>$name,'website'=>$website]+$online+$point),ps_encrypt_string($message),hash('sha256',$receipt),$fingerprint,gmdate('Y-m-d H:i:s',time()+400*86400)]);
+        $stmt=$db->prepare('INSERT INTO hm_incidents(id,category,place_type,state_id,city_id,post_office_id,cell_x,cell_y,incident_date,incident_hour,incident_minute,venue_encrypted,message_encrypted,share_message,receipt_hash,duplicate_hash,delete_after) VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)');
+        $stmt->execute([$id,$category,$place,$state,$location['city_id'],$office,$cellX,$cellY,$date,(int)$when->format('G'),(int)$when->format('i'),ps_encrypt_venue(['name'=>$name,'website'=>$website]+$online+$point),ps_encrypt_string($message),$shareMessage,hash('sha256',$receipt),$fingerprint,gmdate('Y-m-d H:i:s',time()+400*86400)]);
         $db->prepare('INSERT INTO hm_site_daily(day,received_reports) VALUES(?,1) ON DUPLICATE KEY UPDATE received_reports=received_reports+1')->execute([$now->format('Y-m-d')]);
         $db->commit();
     }catch(PDOException $e){$db->rollBack();if($e->getCode()==='23000') throw new HerMapError('A matching report already exists. Please avoid submitting the same experience twice.',409);throw $e;}catch(Throwable $e){$db->rollBack();throw $e;}
@@ -191,6 +192,16 @@ function ps_summary(?int $x,?int $y,int $days):array {
     if($hour && (int)$hour['n']>=PUBLIC_MIN_REPORTS){$h=(int)$hour['incident_hour'];$result['hour']=date('g a',mktime($h,0)).'–'.date('g a',mktime(($h+1)%24,0)).' IST';}
     $stmt=$db->prepare("SELECT WEEKDAY(incident_date) weekday,COUNT(*) n FROM hm_incidents WHERE $where GROUP BY weekday ORDER BY n DESC,weekday LIMIT 1");$stmt->execute($params);$day=$stmt->fetch();
     if($day && (int)$day['n']>=PUBLIC_MIN_REPORTS) $result['day']=['Monday','Tuesday','Wednesday','Thursday','Friday','Saturday','Sunday'][(int)$day['weekday']];
+    $msgStmt=$db->prepare("SELECT message_encrypted,category,incident_date FROM hm_incidents WHERE $where AND share_message=1 AND message_encrypted IS NOT NULL ORDER BY approved_at DESC LIMIT 10");
+    $msgStmt->execute($params);
+    $messages=[];
+    foreach($msgStmt->fetchAll() as $row){
+        $txt=ps_decrypt_string($row['message_encrypted']);
+        if($txt!=='' && $txt!=='Unable to decrypt'){
+            $messages[]=['category'=>INCIDENT_CATEGORIES[$row['category']] ?? $row['category'],'message'=>$txt,'date'=>$row['incident_date']];
+        }
+    }
+    $result['messages']=$messages;
     return $result;
 }
 function ps_site_stats():array {

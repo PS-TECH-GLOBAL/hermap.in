@@ -62,6 +62,11 @@
 .report-message-group textarea{width:100%;min-height:86px;max-height:220px;padding:10px 12px;border:1px solid #dadcd6;border-radius:10px;background:white;color:var(--ink);font-family:inherit;font-size:13px;line-height:1.5;resize:vertical;box-sizing:border-box}
 .report-message-group textarea:focus{outline:2px solid var(--brand);border-color:var(--brand)}
 .area-panel h1{font-size:24px!important;letter-spacing:-.6px;line-height:1.22}
+.area-messages-wrap{margin-top:14px;text-align:left}
+.area-messages-list{list-style:none;padding:0;margin:8px 0 0;display:flex;flex-direction:column;gap:10px}
+.area-message-item{background:#fdfbfe;border:1px solid var(--line);border-left:3px solid var(--brand);border-radius:8px;padding:10px 12px;font-size:12px;line-height:1.5;text-align:left}
+.area-message-tag{display:inline-block;font-size:10px;font-weight:700;color:var(--brand);text-transform:uppercase;letter-spacing:.5px;margin-bottom:4px;background:#f3eef8;padding:2px 6px;border-radius:4px}
+.area-message-text{margin:0;color:var(--ink);white-space:pre-wrap;word-break:break-word}
 .legend-swatch{background:#ff6b6b;border-color:#ffaca6}
 dialog#report-dialog.report-dialog{padding:0!important;max-width:540px;width:calc(100% - 32px);height:min(88vh,88dvh,840px);max-height:min(88vh,88dvh,840px);border-radius:20px;overflow:hidden!important;box-shadow:0 24px 80px rgba(27,36,27,.28);border:1px solid var(--line);background:#fff}
 dialog#report-dialog.report-dialog[open]{display:flex!important;flex-direction:column!important}

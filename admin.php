@@ -245,7 +245,12 @@ require DIR_INC.'/content-start.php';
     <?php if(($venue['latitude']??'')!=='' && ($venue['longitude']??'')!==''): ?><div><dt>Optional shared coordinates · private</dt><dd><?= ps_escape($venue['latitude'].' / '.$venue['longitude']) ?></dd></div><?php endif; ?>
     <?php if($reportMsg !== ''): ?>
     <div style="grid-column: 1 / -1; background:#f4f0f8; padding:12px 14px; border-radius:8px; border-left:3px solid var(--brand); margin-top:4px;">
-      <dt style="font-weight:600; color:var(--brand); margin-bottom:4px; font-size:12px;">Private message (encrypted · up to 1,000 characters)</dt>
+      <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:6px; flex-wrap:wrap; gap:8px;">
+        <dt style="font-weight:600; color:var(--brand); margin:0; font-size:12px;">Reporter message (encrypted)</dt>
+        <span style="font-size:11px; padding:2px 8px; border-radius:12px; font-weight:600; <?= !empty($report['share_message']) ? 'background:#e6f4ea; color:#137333;' : 'background:#f1f3f4; color:#5f6368;' ?>">
+          <?= !empty($report['share_message']) ? '✓ Consented to show publicly if approved' : 'Private only (reporter opted out)' ?>
+        </span>
+      </div>
       <dd style="white-space:pre-wrap; word-break:break-word; margin:0; line-height:1.5; font-size:13px; color:var(--ink);"><?= ps_escape($reportMsg) ?></dd>
     </div>
     <?php endif; ?>
