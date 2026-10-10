@@ -207,7 +207,7 @@ function ps_summary(?int $x,?int $y,int|string $days):array {
     if($x!==null && $y!==null){
         $areaName='Selected area';
         $nameStmt=$db->prepare("
-            SELECT p.office_name, p.district, p.pincode, c.name as city_name, s.name as state_name
+            SELECT p.office_name, p.district, p.pincode, p.state_id, p.city_id, c.name as city_name, s.name as state_name
             FROM hm_incidents r
             JOIN hm_post_offices p ON p.id = r.post_office_id
             JOIN hm_states s ON s.id = r.state_id
@@ -221,7 +221,7 @@ function ps_summary(?int $x,?int $y,int|string $days):array {
         $locRow=$nameStmt->fetch(PDO::FETCH_ASSOC);
         if(!$locRow){
             $poStmt=$db->prepare("
-                SELECT p.office_name, p.district, p.pincode, c.name as city_name, s.name as state_name
+                SELECT p.office_name, p.district, p.pincode, p.state_id, p.city_id, c.name as city_name, s.name as state_name
                 FROM hm_post_offices p
                 JOIN hm_states s ON s.id = p.state_id
                 LEFT JOIN hm_cities c ON c.id = p.city_id
@@ -239,14 +239,24 @@ function ps_summary(?int $x,?int $y,int|string $days):array {
                 $locRow['state_name']
             ]);
             $areaName=implode(', ',$parts).($locRow['pincode'] ? ' (PIN '.$locRow['pincode'].')' : '');
+            $locationInfo=[
+                'state_id'=>(int)$locRow['state_id'],
+                'city_id'=>$locRow['city_id']?(int)$locRow['city_id']:null,
+                'pincode'=>(string)$locRow['pincode'],
+                'district'=>(string)$locRow['district'],
+                'state_name'=>(string)$locRow['state_name'],
+                'city_name'=>(string)($locRow['city_name']??'')
+            ];
         }
     }
 
     $result=[
         'available'=>$count>=PUBLIC_MIN_REPORTS,
         'total'=>ps_count_band($count),
+        'total_count'=>$count,
         'window_days'=>$days,
         'area_name'=>$areaName,
+        'location'=>$locationInfo ?? null,
         'category'=>null,
         'hour'=>null,
         'day'=>null,
@@ -271,7 +281,7 @@ function ps_summary(?int $x,?int $y,int|string $days):array {
         LEFT JOIN hm_cities c ON c.id = r.city_id
         WHERE $where AND r.share_message = 1 AND r.message_encrypted IS NOT NULL
         ORDER BY r.approved_at DESC
-        LIMIT 15
+        LIMIT 20
     ");
     $msgStmt->execute($params);
     $messages=[];

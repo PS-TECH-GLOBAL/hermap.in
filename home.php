@@ -42,8 +42,15 @@ header('Cache-Control: no-store');
       <dl id="area-patterns" hidden></dl>
       <ul id="area-categories" hidden></ul>
       <div id="area-messages-wrap" class="area-messages-wrap" hidden>
-        <span class="small-label" style="display:block; margin:14px 0 8px; font-weight:600; color:var(--brand); text-align:left;"><?= ps_icon('comment-dots') ?> Community experiences (shared with consent)</span>
+        <div class="area-messages-header">
+          <span class="small-label"><?= ps_icon('comment-dots') ?> Community experiences</span>
+          <span id="area-messages-top-count" class="area-messages-badge" title="Reports displayed / Total reports"></span>
+        </div>
         <ul id="area-messages" class="area-messages-list"></ul>
+        <div id="area-messages-more-wrap" class="area-messages-more-wrap">
+          <div id="area-messages-counter" class="area-messages-counter"></div>
+          <a id="area-show-more-link" class="button button-secondary area-more-btn" href="<?= ps_escape(ps_url('reports')) ?>">Show more reports <?= ps_icon('arrow-right') ?></a>
+        </div>
       </div>
     </div>
     <a class="text-link" href="<?= ps_escape(ps_url('methodology')) ?>">Understand the map <?= ps_icon('arrow-right') ?></a>
@@ -222,6 +229,6 @@ header('Cache-Control: no-store');
     <p id="report-result" role="status" aria-live="polite"></p>
   </footer>
 </dialog>
-<div id="map-settings" hidden data-api-url="<?= ps_escape(ps_url('api/')) ?>" data-outline-url="<?= ps_escape(ps_asset('data/india-outline.geojson')) ?>" data-states-url="<?= ps_escape(ps_asset('data/india-states.geojson')) ?>" data-visit-token="<?= ps_escape($visitToken) ?>" data-intake="<?= INTAKE_ENABLED?'1':'0' ?>"></div>
+<div id="map-settings" hidden data-api-url="<?= ps_escape(ps_url('api/')) ?>" data-reports-url="<?= ps_escape(ps_url('reports')) ?>" data-outline-url="<?= ps_escape(ps_asset('data/india-outline.geojson')) ?>" data-states-url="<?= ps_escape(ps_asset('data/india-states.geojson')) ?>" data-visit-token="<?= ps_escape($visitToken) ?>" data-intake="<?= INTAKE_ENABLED?'1':'0' ?>"></div>
 <?php require DIR_INC . '/js.php'; ?>
 </body></html>

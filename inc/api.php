@@ -13,9 +13,44 @@ try {
     if($type==='cities') {$stmt=$db->prepare('SELECT id,name,latitude,longitude FROM hm_cities WHERE state_id=? ORDER BY name LIMIT 2500');$stmt->execute([$state]);ps_json(['items'=>$stmt->fetchAll()]);}
     if(mb_strlen($q)<2 || mb_strlen($q)>80) ps_json(['items'=>[]]);
     $like=str_replace(['!','%','_'],['!!','!%','!_'],$q).'%';
-    $where="(p.pincode LIKE ? ESCAPE '!' OR p.office_name LIKE ? ESCAPE '!' OR p.district LIKE ? ESCAPE '!' OR c.name LIKE ? ESCAPE '!')";$args=[$like,$like,$like,$like];
+    if(ctype_digit($q)){
+      $where="p.pincode LIKE ? ESCAPE '!'";$args=[$like];
+      if($state){$where.=' AND p.state_id=?';$args[]=$state;}if($city){$where.=' AND p.city_id=?';$args[]=$city;}
+      $stmt=$db->prepare("SELECT p.id,p.pincode,p.office_name,p.state_id,p.city_id,p.district,p.latitude,p.longitude,s.name state_name,c.name city_name FROM hm_post_offices p JOIN hm_states s ON s.id=p.state_id LEFT JOIN hm_cities c ON c.id=p.city_id WHERE $where ORDER BY p.pincode,p.office_name LIMIT 15");
+      $stmt->execute($args);
+      ps_json(['items'=>$stmt->fetchAll(),'note'=>'PIN/post-office centres are approximate; PINs are not polygons.']);
+    }
+    $where="p.office_name LIKE ? ESCAPE '!'";$args=[$like];
     if($state){$where.=' AND p.state_id=?';$args[]=$state;}if($city){$where.=' AND p.city_id=?';$args[]=$city;}
-    $stmt=$db->prepare("SELECT p.id,p.pincode,p.office_name,p.state_id,p.city_id,p.district,p.latitude,p.longitude,s.name state_name,c.name city_name FROM hm_post_offices p JOIN hm_states s ON s.id=p.state_id LEFT JOIN hm_cities c ON c.id=p.city_id WHERE $where ORDER BY p.pincode,p.office_name LIMIT 15");$stmt->execute($args);ps_json(['items'=>$stmt->fetchAll(),'note'=>'PIN/post-office centres are approximate; PINs are not polygons.']);
+    $stmt=$db->prepare("SELECT p.id,p.pincode,p.office_name,p.state_id,p.city_id,p.district,p.latitude,p.longitude,s.name state_name,c.name city_name FROM hm_post_offices p JOIN hm_states s ON s.id=p.state_id LEFT JOIN hm_cities c ON c.id=p.city_id WHERE $where ORDER BY p.pincode,p.office_name LIMIT 15");
+    $stmt->execute($args);
+    $items=$stmt->fetchAll();
+    if(count($items)<15){
+      $needed=15-count($items);$excludeIds=array_column($items,'id');
+      $cityArgs=[$like];$cityWhere="name LIKE ? ESCAPE '!'";
+      if($state){$cityWhere.=' AND state_id=?';$cityArgs[]=$state;}
+      $cStmt=$db->prepare("SELECT id FROM hm_cities WHERE $cityWhere LIMIT 20");$cStmt->execute($cityArgs);
+      $cityIds=$cStmt->fetchAll(PDO::FETCH_COLUMN);
+      if(!empty($cityIds)){
+        $in=implode(',',array_fill(0,count($cityIds),'?'));
+        $cWhere="p.city_id IN ($in)";$cArgs=$cityIds;
+        if($state){$cWhere.=' AND p.state_id=?';$cArgs[]=$state;}
+        if(!empty($excludeIds)){$inEx=implode(',',array_fill(0,count($excludeIds),'?'));$cWhere.=" AND p.id NOT IN ($inEx)";$cArgs=array_merge($cArgs,$excludeIds);}
+        $cpoStmt=$db->prepare("SELECT p.id,p.pincode,p.office_name,p.state_id,p.city_id,p.district,p.latitude,p.longitude,s.name state_name,c.name city_name FROM hm_post_offices p JOIN hm_states s ON s.id=p.state_id LEFT JOIN hm_cities c ON c.id=p.city_id WHERE $cWhere ORDER BY p.pincode,p.office_name LIMIT $needed");
+        $cpoStmt->execute($cArgs);$cityMatches=$cpoStmt->fetchAll();
+        $items=array_merge($items,$cityMatches);
+        foreach($cityMatches as $cm){$excludeIds[]=$cm['id'];}
+        $needed=15-count($items);
+      }
+      if($needed>0){
+        $dWhere="p.district LIKE ? ESCAPE '!'";$dArgs=[$like];
+        if($state){$dWhere.=' AND p.state_id=?';$dArgs[]=$state;}
+        if(!empty($excludeIds)){$inEx=implode(',',array_fill(0,count($excludeIds),'?'));$dWhere.=" AND p.id NOT IN ($inEx)";$dArgs=array_merge($dArgs,$excludeIds);}
+        $dStmt=$db->prepare("SELECT p.id,p.pincode,p.office_name,p.state_id,p.city_id,p.district,p.latitude,p.longitude,s.name state_name,c.name city_name FROM hm_post_offices p JOIN hm_states s ON s.id=p.state_id LEFT JOIN hm_cities c ON c.id=p.city_id WHERE $dWhere ORDER BY p.pincode,p.office_name LIMIT $needed");
+        $dStmt->execute($dArgs);$items=array_merge($items,$dStmt->fetchAll());
+      }
+    }
+    ps_json(['items'=>$items,'note'=>'PIN/post-office centres are approximate; PINs are not polygons.']);
   }
   if($name==='summary' || $name==='zones') {
     $rawDays=strtolower(trim((string)($_GET['days'] ?? '90')));

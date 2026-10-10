@@ -63,7 +63,14 @@
 .report-message-group textarea:focus{outline:2px solid var(--brand);border-color:var(--brand)}
 .area-panel h1{font-size:24px!important;letter-spacing:-.6px;line-height:1.22}
 .area-messages-wrap{margin-top:16px;text-align:left}
+.area-messages-header{display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:8px}
+.area-messages-header .small-label{margin:0!important;font-weight:600;color:var(--brand)}
+.area-messages-badge{display:inline-flex;align-items:center;padding:2px 8px;font-size:11px;font-weight:700;letter-spacing:.3px;background:#f3eef8;color:var(--brand);border:1px solid rgba(128,100,158,.2);border-radius:20px;white-space:nowrap}
 .area-messages-list{list-style:none;padding:0;margin:10px 0 0;display:flex;flex-direction:column;gap:12px}
+.area-messages-more-wrap{margin-top:16px;display:flex;flex-direction:column;align-items:center;gap:8px;text-align:center}
+.area-messages-counter{font-size:12px;font-weight:600;color:var(--muted);letter-spacing:.2px}
+.area-more-btn{width:100%!important;box-sizing:border-box;display:inline-flex!important;align-items:center!important;justify-content:center!important;gap:8px!important;padding:10px 16px!important;font-size:13px!important;font-weight:600!important;border-radius:10px!important;background:#fff!important;border:1px solid var(--brand)!important;color:var(--brand)!important;transition:all .2s ease}
+.area-more-btn:hover{background:var(--brand)!important;color:#fff!important}
 .area-message-item{background:#fff;border:1px solid var(--line);border-left:4px solid var(--brand);border-radius:10px;padding:12px 14px;font-size:12px;line-height:1.5;text-align:left;box-shadow:0 2px 8px rgba(36,3,72,.04);transition:box-shadow .2s ease}
 .area-message-item:hover{box-shadow:0 4px 14px rgba(36,3,72,.08)}
 .area-message-tags-row{display:flex;flex-wrap:wrap;align-items:center;gap:6px;margin-bottom:8px}
