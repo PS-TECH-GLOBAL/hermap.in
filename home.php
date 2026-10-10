@@ -121,79 +121,135 @@ header('Cache-Control: no-store');
     <button class="icon-button modal-close-btn" type="button" data-close-dialog aria-label="Close reporting form"><?= ps_icon('xmark') ?></button>
   </header>
   <div class="report-modal-body" id="report-dialog-body">
-    <div class="notice-box"><strong>Your report is stored privately.</strong>No name, email or phone number is required. Selected location, date, time, optional venue/online details and any exact point you explicitly choose to share are saved for moderation. Only delayed, broad totals may become public.</div>
+    <div class="notice-box report-quick-notice"><strong>Your report is private and anonymous.</strong> No name, phone number, or email required. Reports are stored securely encrypted for moderation. Only delayed, broad grouped statistics may become public.</div>
     <p class="emergency-note">In immediate danger? <a href="tel:112">Call 112</a>. HerMap cannot dispatch help or file a police complaint.</p>
-    <form id="report-form">
-      <label for="report-category">Type of experience</label>
-      <select id="report-category" required><option value="">Choose a category</option><?php foreach(INCIDENT_CATEGORIES as $key=>$label): ?><option value="<?= ps_escape($key) ?>"><?= ps_escape($label) ?></option><?php endforeach; ?></select>
-      <label for="report-place-type">Where did it happen?</label>
-      <select id="report-place-type" required><option value="">Choose a place type</option><?php foreach(PLACE_TYPES as $key=>$label): ?><option value="<?= ps_escape($key) ?>"><?= ps_escape($label) ?></option><?php endforeach; ?></select>
-      <fieldset id="report-venue-fields" class="venue-fields" hidden disabled>
-        <legend id="report-venue-heading">Place details · optional</legend>
-        <label id="report-venue-name-label" for="report-venue-name">Place name (optional)</label>
-        <input id="report-venue-name" type="text" maxlength="120" autocomplete="off" placeholder="Organisation or public venue name">
-        <label id="report-venue-website-label" for="report-venue-website">Official website (optional)</label>
-        <input id="report-venue-website" type="url" maxlength="300" autocomplete="off" placeholder="https://example.com" aria-describedby="venue-privacy-hint">
-        <p id="venue-privacy-hint" class="form-hint">Do not include employee or survivor names, room numbers, private addresses or personal profiles. Venue details are encrypted for private review and are never displayed on this map.</p>
-      </fieldset>
-      <fieldset id="report-online-fields" class="venue-fields" hidden disabled>
-        <legend>Online context · optional, private</legend>
-        <label for="report-online-platform">Platform (optional)</label><input id="report-online-platform" maxlength="60" autocomplete="off" placeholder="For example, Instagram or X">
-        <label for="report-online-handle">Harasser’s username / handle (optional)</label><input id="report-online-handle" maxlength="100" autocomplete="off" placeholder="@username" aria-describedby="online-privacy-hint">
-        <p id="online-privacy-hint" class="form-hint">Only include the account involved in this experience. Do not add your own handle, real names, contact details or a child’s account. These details are encrypted for private review and never appear on the public map. You can leave both fields blank.</p>
-      </fieldset>
-      <label for="report-country">Country</label><select id="report-country" required><option value="101">India</option><option value="coming-soon" disabled>More Coming Soon</option></select>
-      <label for="report-state">State / Union Territory</label><select id="report-state" required><option value="">Loading states…</option></select>
-      <label for="report-city">City / district (optional filter)</label><select id="report-city"><option value="">All in selected state</option></select>
-      <label for="report-pin-search">PIN, post office or district</label><input id="report-pin-search" type="search" autocomplete="off" maxlength="80" placeholder="Select a state, then enter a PIN or place" required>
-      <label for="report-post-office">Choose an approximate location</label><select id="report-post-office" required><option value="">Search above to find a post office</option></select>
-      <p class="form-hint">Choose the nearest relevant public post office. This identifies a broad reporting area, not an exact incident point. Directory entries can be outdated.</p>
-      <details class="optional-location-details">
-        <summary><span><?= ps_icon('location-dot') ?> Share precise point or coordinates (optional)</span><?= ps_icon('chevron-down') ?></summary>
-        <div class="optional-location-body">
-          <p class="form-hint">Use our local map, enter coordinates, or request your device location. No paid map API is used. Select a nearby PIN first. This overview map has no street-level imagery.</p>
-          <button id="open-location-picker" class="button button-secondary" type="button" aria-expanded="false" aria-controls="location-picker-panel" style="margin-bottom:10px;"><?= ps_icon('map-location-dot') ?> Choose a point on map</button>
-          <div id="location-picker-panel" hidden>
-            <div id="report-location-map" role="region" aria-label="Optional private location picker"></div>
-            <div class="picker-controls" aria-label="Location picker controls">
-              <button type="button" id="picker-zoom-in" class="icon-button" aria-label="Zoom in on location picker"><?= ps_icon('plus') ?></button>
-              <button type="button" id="picker-zoom-out" class="icon-button" aria-label="Zoom out on location picker"><?= ps_icon('minus') ?></button>
-            </div>
-            <p class="form-hint">Tap the map to choose a point. Local overview geography: <a href="https://surveyofindia.gov.in/pages/outline-maps-of-india" target="_blank" rel="noopener noreferrer">Survey of India</a> / <a href="https://nwdp.nwic.gov.in/hi/dataset/state-boundary" target="_blank" rel="noopener noreferrer">NWIC</a>.</p>
-            <div class="dialog-actions">
-              <button type="button" id="picker-locate" class="button button-secondary"><?= ps_icon('location-crosshairs') ?> Request device location</button>
-              <button type="button" id="clear-shared-location" class="button button-secondary">Clear point</button>
+    <form id="report-form" autocomplete="off">
+      <!-- Hidden selects for backend submission & location-picker.js compatibility -->
+      <select id="report-country" hidden aria-hidden="true"><option value="101" selected>India</option></select>
+      <select id="report-state" hidden aria-hidden="true"><option value=""></option></select>
+      <select id="report-city" hidden aria-hidden="true"><option value=""></option></select>
+      <select id="report-post-office" hidden aria-hidden="true"><option value=""></option></select>
+
+      <!-- Step 1: Location (on top) -->
+      <div class="form-section form-section-location">
+        <label for="report-location-search" class="section-label"><span class="step-num">1</span> Incident Location</label>
+        <div class="location-search-wrapper" id="report-location-search-box">
+          <div class="search-input-affix">
+            <span class="affix-icon"><?= ps_icon('magnifying-glass') ?></span>
+            <input id="report-location-search" type="search" autocomplete="off" maxlength="80" placeholder="Type a PIN code or city (e.g. 110001, Jaipur, Andheri...)" aria-autocomplete="list" aria-controls="report-location-dropdown" aria-expanded="false">
+            <span id="report-location-spinner" class="location-spinner" hidden><?= ps_icon('spinner') ?></span>
+          </div>
+          <div id="report-location-dropdown" class="location-dropdown-menu" hidden role="listbox"></div>
+        </div>
+
+        <div id="report-selected-location" class="selected-location-card" hidden>
+          <div class="selected-location-info">
+            <span class="loc-pin-icon"><?= ps_icon('location-dot') ?></span>
+            <div class="loc-text">
+              <strong id="selected-loc-name">Post Office Name</strong>
+              <span id="selected-loc-meta">PIN · City, State</span>
             </div>
           </div>
-          <div class="coordinate-fields">
-            <div><label for="report-latitude">Latitude (optional)</label><input id="report-latitude" type="number" min="6" max="38" step="any" inputmode="decimal" placeholder="28.613900"></div>
-            <div><label for="report-longitude">Longitude (optional)</label><input id="report-longitude" type="number" min="68" max="98" step="any" inputmode="decimal" placeholder="77.209000"></div>
+          <button type="button" id="btn-change-location" class="button button-text" aria-label="Change selected location">Change</button>
+        </div>
+        <p class="form-hint" id="location-hint" style="margin-top:6px;">Start typing a PIN or city to see instant suggestions, then select your area.</p>
+      </div>
+
+      <!-- Step 2: Experience & When -->
+      <div class="form-section">
+        <label class="section-label"><span class="step-num">2</span> Incident Details</label>
+        <div class="form-row-grid">
+          <div class="form-field">
+            <label for="report-category">Type of experience</label>
+            <select id="report-category" required><option value="">Choose a category</option><?php foreach(INCIDENT_CATEGORIES as $key=>$label): ?><option value="<?= ps_escape($key) ?>"><?= ps_escape($label) ?></option><?php endforeach; ?></select>
           </div>
-          <label class="checkbox-label" style="margin-top:10px;"><input type="checkbox" id="report-share-location"><span>I choose to save this selected point privately. I understand it could identify a sensitive place.</span></label>
-          <p class="form-hint" style="margin-top:4px;">Leave this unchecked to send only your PIN-based broad location. A shared point is encrypted for moderators and used to assign a broad map cell. Exact coordinates never appear publicly; avoid homes or places that identify a survivor or child.</p>
-          <p id="picker-status" class="form-hint" role="status"></p>
+          <div class="form-field">
+            <label for="report-place-type">Where did it happen?</label>
+            <select id="report-place-type" required><option value="">Choose place type</option><?php foreach(PLACE_TYPES as $key=>$label): ?><option value="<?= ps_escape($key) ?>"><?= ps_escape($label) ?></option><?php endforeach; ?></select>
+          </div>
+        </div>
+
+        <div class="form-row-grid" style="margin-top:12px;">
+          <div class="form-field">
+            <label for="report-date">Incident date</label>
+            <input id="report-date" type="date" required max="<?= (new DateTimeImmutable('now', new DateTimeZone('Asia/Kolkata')))->format('Y-m-d') ?>" value="<?= (new DateTimeImmutable('now', new DateTimeZone('Asia/Kolkata')))->format('Y-m-d') ?>">
+          </div>
+          <div class="form-field">
+            <label for="report-time">Approximate time (IST)</label>
+            <input id="report-time" type="time" required value="<?= (new DateTimeImmutable('now', new DateTimeZone('Asia/Kolkata')))->format('H:i') ?>">
+          </div>
+        </div>
+      </div>
+
+      <!-- Step 3: Message / Story -->
+      <div class="form-section">
+        <label for="report-message" class="section-label"><span class="step-num">3</span> What happened? <span class="badge-optional">Optional</span></label>
+        <div class="report-message-group">
+          <textarea id="report-message" maxlength="1000" rows="3" placeholder="Briefly describe what happened without sharing real names, phone numbers, or private identities." aria-describedby="report-message-hint"></textarea>
+          <div class="field-meta" style="display:flex; justify-content:space-between; align-items:center; margin-top:4px;">
+            <p id="report-message-hint" class="form-hint" style="margin:0;">Max 1,000 characters. Encrypted in storage.</p>
+            <span id="report-message-count" class="form-hint" style="margin:0; font-variant-numeric:tabular-nums; flex-shrink:0;">0/1000</span>
+          </div>
+          <label class="checkbox-label" style="margin-top:10px;">
+            <input type="checkbox" id="report-share-message" name="share_message">
+            <span>Allow this message to be shown publicly so other people can understand the situation better.</span>
+          </label>
+        </div>
+      </div>
+
+      <!-- Step 4: Optional Specifics (Venue, Online, Map Coordinates) -->
+      <details class="optional-details-group" id="report-more-details">
+        <summary><span><?= ps_icon('sliders') ?> Add venue name, online handle, or exact map point (optional)</span><?= ps_icon('chevron-down') ?></summary>
+        <div class="optional-details-content">
+          <fieldset id="report-venue-fields" class="venue-fields" hidden disabled>
+            <legend id="report-venue-heading">Place details · optional</legend>
+            <label id="report-venue-name-label" for="report-venue-name">Place name (optional)</label>
+            <input id="report-venue-name" type="text" maxlength="120" autocomplete="off" placeholder="Organisation or public venue name">
+            <label id="report-venue-website-label" for="report-venue-website">Official website (optional)</label>
+            <input id="report-venue-website" type="url" maxlength="300" autocomplete="off" placeholder="https://example.com" aria-describedby="venue-privacy-hint">
+            <p id="venue-privacy-hint" class="form-hint">Do not include employee names, private addresses, or room numbers. Encrypted for private review.</p>
+          </fieldset>
+          <fieldset id="report-online-fields" class="venue-fields" hidden disabled>
+            <legend>Online context · optional, private</legend>
+            <label for="report-online-platform">Platform (optional)</label><input id="report-online-platform" maxlength="60" autocomplete="off" placeholder="For example, Instagram or X">
+            <label for="report-online-handle">Harasser’s username / handle (optional)</label><input id="report-online-handle" maxlength="100" autocomplete="off" placeholder="@username" aria-describedby="online-privacy-hint">
+            <p id="online-privacy-hint" class="form-hint">Only include the account involved. Do not add your own handle or personal details.</p>
+          </fieldset>
+          <div class="optional-location-body">
+            <p class="form-hint" style="margin-top:0;">Optionally mark a point on the map or request device coordinates. Exact coordinates are kept private.</p>
+            <button id="open-location-picker" class="button button-secondary" type="button" aria-expanded="false" aria-controls="location-picker-panel" style="margin-bottom:10px;"><?= ps_icon('map-location-dot') ?> Choose a point on map</button>
+            <div id="location-picker-panel" hidden>
+              <div id="report-location-map" role="region" aria-label="Optional private location picker"></div>
+              <div class="picker-controls" aria-label="Location picker controls">
+                <button type="button" id="picker-zoom-in" class="icon-button" aria-label="Zoom in on location picker"><?= ps_icon('plus') ?></button>
+                <button type="button" id="picker-zoom-out" class="icon-button" aria-label="Zoom out on location picker"><?= ps_icon('minus') ?></button>
+              </div>
+              <p class="form-hint">Tap the map to choose a point.</p>
+              <div class="dialog-actions">
+                <button type="button" id="picker-locate" class="button button-secondary"><?= ps_icon('location-crosshairs') ?> Request device location</button>
+                <button type="button" id="clear-shared-location" class="button button-secondary">Clear point</button>
+              </div>
+            </div>
+            <div class="coordinate-fields">
+              <div><label for="report-latitude">Latitude (optional)</label><input id="report-latitude" type="number" min="6" max="38" step="any" inputmode="decimal" placeholder="28.613900"></div>
+              <div><label for="report-longitude">Longitude (optional)</label><input id="report-longitude" type="number" min="68" max="98" step="any" inputmode="decimal" placeholder="77.209000"></div>
+            </div>
+            <label class="checkbox-label" style="margin-top:10px;"><input type="checkbox" id="report-share-location"><span>I choose to save this selected point privately.</span></label>
+            <p id="picker-status" class="form-hint" role="status"></p>
+          </div>
         </div>
       </details>
-      <label for="report-date">Incident date</label><input id="report-date" type="date" required max="<?= (new DateTimeImmutable('now', new DateTimeZone('Asia/Kolkata')))->format('Y-m-d') ?>">
-      <label for="report-time">Approximate time (IST)</label><input id="report-time" type="time" required>
-      <p class="form-hint">Date and time stay private. Report only incidents within the past year. For online incidents, select a relevant broad locality without identifying anyone.</p>
-      <div class="report-message-group">
-        <label for="report-message">What happened? (optional message · up to 1,000 characters)</label>
-        <textarea id="report-message" maxlength="1000" rows="3" placeholder="Briefly describe what happened without sharing real names, phone numbers, or private identities." aria-describedby="report-message-hint"></textarea>
-        <div class="field-meta" style="display:flex; justify-content:space-between; align-items:center; margin-top:4px;">
-          <p id="report-message-hint" class="form-hint" style="margin:0;">Max 1,000 characters. Encrypted in storage.</p>
-          <span id="report-message-count" class="form-hint" style="margin:0; font-variant-numeric:tabular-nums; flex-shrink:0;">0/1000</span>
-        </div>
-        <label class="checkbox-label" style="margin-top:10px;">
-          <input type="checkbox" id="report-share-message" name="share_message">
-          <span>Allow this message to be shown publicly so other people can understand the situation better.</span>
+
+      <!-- Step 5: Verification & Terms -->
+      <div class="form-section form-section-submit">
+        <div class="human-check"><label for="report-captcha" id="captcha-question">Loading human check…</label><div><input id="report-captcha" inputmode="numeric" pattern="[0-9]+" maxlength="3" autocomplete="off" required aria-describedby="captcha-help"><button type="button" class="icon-button" id="refresh-captcha" aria-label="Get a new human check"><?= ps_icon('arrow-rotate-left') ?></button></div><p class="form-hint" id="captcha-help">Solve the math question above.</p></div>
+        <div class="honeypot" aria-hidden="true"><label for="website-check">Leave this empty</label><input id="website-check" tabindex="-1" autocomplete="off"></div>
+        <label class="checkbox-label report-terms-label">
+          <input id="report-consent" type="checkbox" required>
+          <span>I am 18 or older, reporting honestly, and agree to HerMap's <a href="<?= ps_escape(ps_url('privacy-policy')) ?>" target="_blank">Privacy Policy</a> &amp; <a href="<?= ps_escape(ps_url('terms-and-conditions')) ?>" target="_blank">Terms</a>.</span>
         </label>
-        <p class="form-hint" style="margin-top:2px;">If checked, moderators may include your message anonymously in the broad area summary after review. Never include real names, phone numbers, or private identities.</p>
+        <input id="report-adult" type="checkbox" hidden checked aria-hidden="true">
       </div>
-      <div class="human-check"><label for="report-captcha" id="captcha-question">Loading human check…</label><div><input id="report-captcha" inputmode="numeric" pattern="[0-9]+" maxlength="3" autocomplete="off" required aria-describedby="captcha-help"><button type="button" class="icon-button" id="refresh-captcha" aria-label="Get a new human check"><?= ps_icon('arrow-rotate-left') ?></button></div><p class="form-hint" id="captcha-help">Solve the question. It changes with each attempt and expires after 10 minutes.</p></div>
-      <div class="honeypot" aria-hidden="true"><label for="website-check">Leave this empty</label><input id="website-check" tabindex="-1" autocomplete="off"></div>
-      <label class="checkbox-label"><input id="report-adult" type="checkbox" required><span>I am 18 or older, and this report does not identify a child or survivor.</span></label>
-      <label class="checkbox-label"><input id="report-consent" type="checkbox" required><span>I am reporting honestly and agree to the privacy policy and terms. I understand these details are saved for private review and delayed grouped publication.</span></label>
     </form>
     <section id="saved-receipt" class="notice-box" hidden>
       <h3>Your report is saved</h3>
