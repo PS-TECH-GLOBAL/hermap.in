@@ -148,11 +148,15 @@ if($loggedIn)try{
  $countStmt->execute($params);
  $total=(int)$countStmt->fetchColumn();
  
- $offset=($page-1)*25;
+ $perPage = 20;
+ $totalPages = max(1, (int)ceil($total / $perPage));
+ if ($page > $totalPages) { $page = $totalPages; }
+ $offset = ($page - 1) * $perPage;
+
  $reportStmt=$db->prepare("SELECT r.*,s.name state_name,c.name city_name,p.office_name,p.pincode,
  (SELECT reason FROM hm_moderation_actions WHERE report_id=r.id ORDER BY id DESC LIMIT 1) last_reason,
  (SELECT notes FROM hm_moderation_actions WHERE report_id=r.id ORDER BY id DESC LIMIT 1) last_notes
- FROM hm_incidents r JOIN hm_states s ON s.id=r.state_id LEFT JOIN hm_cities c ON c.id=r.city_id JOIN hm_post_offices p ON p.id=r.post_office_id $whereSql ORDER BY r.submitted_at DESC LIMIT 25 OFFSET $offset");
+ FROM hm_incidents r JOIN hm_states s ON s.id=r.state_id LEFT JOIN hm_cities c ON c.id=r.city_id JOIN hm_post_offices p ON p.id=r.post_office_id $whereSql ORDER BY r.submitted_at DESC, r.incident_date DESC, r.id DESC LIMIT 20 OFFSET $offset");
  $reportStmt->execute($params);
  $reports=$reportStmt->fetchAll();
  
@@ -169,11 +173,22 @@ if($loggedIn)try{
  $inqCountStmt->execute($inqParams);
  $inquiryTotal=(int)$inqCountStmt->fetchColumn();
  
- $inqStmt=$db->prepare("SELECT * FROM hm_contact_messages $inqWhereSql ORDER BY created_at DESC LIMIT 25 OFFSET $offset");
+ $inqPerPage = 20;
+ $inqTotalPages = max(1, (int)ceil($inquiryTotal / $inqPerPage));
+ $inqPage = max(1, min($inqTotalPages, (int)($_GET['page'] ?? 1)));
+ $inqOffset = ($inqPage - 1) * $inqPerPage;
+
+ $inqStmt=$db->prepare("SELECT * FROM hm_contact_messages $inqWhereSql ORDER BY created_at DESC, id DESC LIMIT 20 OFFSET $inqOffset");
  $inqStmt->execute($inqParams);
  $inquiries=$inqStmt->fetchAll();
  
 }catch(Throwable $e){$error='The dashboard could not load. Please try again.';error_log('HerMap admin error: '.$e->getMessage());}
+
+function admin_url_with_page(int $targetPage): string {
+    $query = $_GET;
+    $query['page'] = $targetPage;
+    return ps_url('admin?' . http_build_query($query));
+}
 
 function dashboard_count(array $daily,string $from):int{return array_sum(array_map(fn($row)=>$row['day']>=$from?(int)$row['received_reports']:0,$daily));}
 $today=new DateTimeImmutable('today',new DateTimeZone('Asia/Kolkata'));
@@ -227,7 +242,7 @@ require DIR_INC.'/content-start.php';
 </nav>
 
 <?php if($tab==='incidents'): ?>
-<section class="admin-chart panel" aria-labelledby="activity-title"><div class="chart-heading"><div><h2 id="activity-title">Community activity</h2><p>Daily totals in IST. Visits are page loads, not unique people.</p></div><div class="chart-filters"><label for="chart-metric" class="sr-only">Chart metric</label><select id="chart-metric"><option value="received_reports">Received reports</option><option value="visits">Page visits</option></select><label for="chart-period" class="sr-only">Chart period</label><select id="chart-period"><option value="7">Past 7 days</option><option value="30" selected>Past 30 days</option><option value="90">Past 90 days</option><option value="all">All time</option></select><label for="chart-group" class="sr-only">Group chart by</label><select id="chart-group"><option value="day">Daily</option><option value="week">Weekly</option><option value="month">Monthly</option></select></div></div><div id="admin-activity-chart" role="img" aria-label="Daily report activity"></div><div id="admin-chart-data" hidden data-api-url="<?= ps_escape(ps_url('api/admin-stats')) ?>" data-series="<?= ps_escape(json_encode($daily)) ?>" data-today="<?= ps_escape($today->format('Y-m-d')) ?>"></div><table class="sr-only"><caption>Daily totals</caption><thead><tr><th>Date (IST)</th><th>Reports received</th><th>Page visits</th></tr></thead><tbody><?php foreach($daily as $row): ?><tr><td><?= ps_escape($row['day']) ?></td><td><?= (int)$row['received_reports'] ?></td><td><?= (int)$row['visits'] ?></td></tr><?php endforeach; ?></tbody></table><p id="admin-update-state" class="form-hint" role="status">Counts and graphs refresh while this page is visible. Refresh the page to update the review queue.</p></section>
+<section class="admin-chart panel" aria-labelledby="activity-title"><div class="chart-heading"><div><h2 id="activity-title">Community activity</h2><p>Daily totals in IST. Visits are page loads, not unique people.</p></div><div class="chart-filters"><label for="chart-metric" class="sr-only">Chart metric</label><select id="chart-metric"><option value="received_reports">Received reports</option><option value="visits">Page visits</option></select><label for="chart-period" class="sr-only">Chart period</label><select id="chart-period"><option value="7">Past 7 days</option><option value="30" selected>Past 30 days</option><option value="90">Past 90 days</option><option value="all">All time</option></select><label for="chart-group" class="sr-only">Group chart by</label><select id="chart-group"><option value="day">Daily</option><option value="week">Weekly</option><option value="month">Monthly</option></select></div></div><div id="admin-activity-chart" role="img" aria-label="Daily report activity"></div><div id="admin-chart-data" hidden data-api-url="<?= ps_escape(ps_url('api/admin-stats')) ?>" data-series="<?= ps_escape(json_encode($daily)) ?>" data-today="<?= ps_escape($today->format('Y-m-d')) ?>"></div><div class="sr-only"><table class="sr-only"><caption>Daily totals</caption><thead><tr><th>Date (IST)</th><th>Reports received</th><th>Page visits</th></tr></thead><tbody><?php foreach($daily as $row): ?><tr><td><?= ps_escape($row['day']) ?></td><td><?= (int)$row['received_reports'] ?></td><td><?= (int)$row['visits'] ?></td></tr><?php endforeach; ?></tbody></table></div><p id="admin-update-state" class="form-hint" role="status">Counts and graphs refresh while this page is visible. Refresh the page to update the review queue.</p></section>
 
 <div class="queue-heading">
   <h2>Incident review</h2>
@@ -350,13 +365,43 @@ require DIR_INC.'/content-start.php';
   </form>
 </article>
 <?php endforeach; ?>
-<?php
-$adminPageQuery = $_GET;
-unset($adminPageQuery['page']);
-$adminPrevUrl = ps_url('admin?' . http_build_query(array_merge($adminPageQuery, ['page' => $page - 1])));
-$adminNextUrl = ps_url('admin?' . http_build_query(array_merge($adminPageQuery, ['page' => $page + 1])));
-?>
-<nav class="pagination" aria-label="Queue pages"><?php if($page>1): ?><a href="<?= ps_escape($adminPrevUrl) ?>">Previous</a><?php endif; ?><span>Page <?= $page ?> · <?= number_format($total) ?> reports</span><?php if($page*25<$total): ?><a href="<?= ps_escape($adminNextUrl) ?>">Next</a><?php endif; ?></nav>
+<?php if ($totalPages > 1): ?>
+<div class="pagination-wrap">
+  <div class="pagination-info">Showing <?= min($total, ($page - 1) * $perPage + 1) ?>–<?= min($total, $page * $perPage) ?> of <?= number_format($total) ?> reports (Page <?= $page ?> of <?= $totalPages ?>)</div>
+  <nav class="pagination-bar" aria-label="Incident queue pagination">
+    <?php if ($page > 1): ?>
+      <a href="<?= ps_escape(admin_url_with_page($page - 1)) ?>" rel="prev">&laquo; Previous</a>
+    <?php endif; ?>
+
+    <?php
+    $start = max(1, $page - 2);
+    $end = min($totalPages, $page + 2);
+    if ($start > 1): ?>
+      <a href="<?= ps_escape(admin_url_with_page(1)) ?>">1</a>
+      <?php if ($start > 2): ?><span class="page-dots">&hellip;</span><?php endif; ?>
+    <?php endif; ?>
+
+    <?php for ($i = $start; $i <= $end; $i++): ?>
+      <?php if ($i === $page): ?>
+        <span class="page-current" aria-current="page"><?= $i ?></span>
+      <?php else: ?>
+        <a href="<?= ps_escape(admin_url_with_page($i)) ?>"><?= $i ?></a>
+      <?php endif; ?>
+    <?php endfor; ?>
+
+    <?php if ($end < $totalPages): ?>
+      <?php if ($end < $totalPages - 1): ?><span class="page-dots">&hellip;</span><?php endif; ?>
+      <a href="<?= ps_escape(admin_url_with_page($totalPages)) ?>"><?= $totalPages ?></a>
+    <?php endif; ?>
+
+    <?php if ($page < $totalPages): ?>
+      <a href="<?= ps_escape(admin_url_with_page($page + 1)) ?>" rel="next">Next &raquo;</a>
+    <?php endif; ?>
+  </nav>
+</div>
+<?php else: ?>
+<div class="pagination-info" style="text-align:center; margin-top:24px; color:var(--muted); font-size:12px;">Total <?= number_format($total) ?> <?= $total === 1 ? 'report' : 'reports' ?></div>
+<?php endif; ?>
 
 <?php elseif($tab==='inquiries'): ?>
 <div class="queue-heading">
@@ -411,7 +456,43 @@ $adminNextUrl = ps_url('admin?' . http_build_query(array_merge($adminPageQuery, 
   </div>
 </article>
 <?php endforeach; ?>
-<nav class="pagination" aria-label="Inquiry pages"><?php if($page>1): ?><a href="<?= ps_escape(ps_url('admin?tab=inquiries&inquiry_status='.$inquiryFilter.'&page='.($page-1).($inquirySearch!==''?'&iq='.urlencode($inquirySearch):''))) ?>">Previous</a><?php endif; ?><span>Page <?= $page ?> · <?= number_format($inquiryTotal) ?> inquiries</span><?php if($page*25<$inquiryTotal): ?><a href="<?= ps_escape(ps_url('admin?tab=inquiries&inquiry_status='.$inquiryFilter.'&page='.($page+1).($inquirySearch!==''?'&iq='.urlencode($inquirySearch):''))) ?>">Next</a><?php endif; ?></nav>
+<?php if ($inqTotalPages > 1): ?>
+<div class="pagination-wrap">
+  <div class="pagination-info">Showing <?= min($inquiryTotal, ($inqPage - 1) * $inqPerPage + 1) ?>–<?= min($inquiryTotal, $inqPage * $inqPerPage) ?> of <?= number_format($inquiryTotal) ?> inquiries (Page <?= $inqPage ?> of <?= $inqTotalPages ?>)</div>
+  <nav class="pagination-bar" aria-label="Inquiry queue pagination">
+    <?php if ($inqPage > 1): ?>
+      <a href="<?= ps_escape(admin_url_with_page($inqPage - 1)) ?>" rel="prev">&laquo; Previous</a>
+    <?php endif; ?>
+
+    <?php
+    $start = max(1, $inqPage - 2);
+    $end = min($inqTotalPages, $inqPage + 2);
+    if ($start > 1): ?>
+      <a href="<?= ps_escape(admin_url_with_page(1)) ?>">1</a>
+      <?php if ($start > 2): ?><span class="page-dots">&hellip;</span><?php endif; ?>
+    <?php endif; ?>
+
+    <?php for ($i = $start; $i <= $end; $i++): ?>
+      <?php if ($i === $inqPage): ?>
+        <span class="page-current" aria-current="page"><?= $i ?></span>
+      <?php else: ?>
+        <a href="<?= ps_escape(admin_url_with_page($i)) ?>"><?= $i ?></a>
+      <?php endif; ?>
+    <?php endfor; ?>
+
+    <?php if ($end < $inqTotalPages): ?>
+      <?php if ($end < $inqTotalPages - 1): ?><span class="page-dots">&hellip;</span><?php endif; ?>
+      <a href="<?= ps_escape(admin_url_with_page($inqTotalPages)) ?>"><?= $inqTotalPages ?></a>
+    <?php endif; ?>
+
+    <?php if ($inqPage < $inqTotalPages): ?>
+      <a href="<?= ps_escape(admin_url_with_page($inqPage + 1)) ?>" rel="next">Next &raquo;</a>
+    <?php endif; ?>
+  </nav>
+</div>
+<?php else: ?>
+<div class="pagination-info" style="text-align:center; margin-top:24px; color:var(--muted); font-size:12px;">Total <?= number_format($inquiryTotal) ?> <?= $inquiryTotal === 1 ? 'inquiry' : 'inquiries' ?></div>
+<?php endif; ?>
 
 <?php elseif($tab==='settings'): ?>
 <div class="panel" style="padding:24px;">
@@ -446,7 +527,6 @@ $adminNextUrl = ps_url('admin?' . http_build_query(array_merge($adminPageQuery, 
   </form>
 </div>
 <?php endif; ?>
-
-<?php endif; ?>
 </div>
+<?php endif; ?>
 <?php require DIR_INC.'/content-end.php'; ?>

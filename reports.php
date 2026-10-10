@@ -20,7 +20,7 @@ if (!isset(INCIDENT_CATEGORIES[$selectedCategory])) {
 }
 
 $page = max(1, (int)($_GET['page'] ?? 1));
-$perPage = 10;
+$perPage = 20;
 
 // 2. Fetch States for filter dropdown
 $states = $db->query('SELECT id, name FROM hm_states ORDER BY name')->fetchAll();
@@ -82,7 +82,7 @@ $reportStmt = $db->prepare("SELECT r.id, r.category, r.place_type, r.incident_da
     LEFT JOIN hm_cities c ON c.id=r.city_id
     JOIN hm_post_offices p ON p.id=r.post_office_id
     WHERE $whereSql
-    ORDER BY r.approved_at DESC, r.incident_date DESC
+    ORDER BY r.incident_date DESC, r.approved_at DESC, r.id DESC
     LIMIT $perPage OFFSET $offset");
 $reportStmt->execute($params);
 $rawStories = $reportStmt->fetchAll();
@@ -205,36 +205,39 @@ require __DIR__ . '/inc/content-start.php';
   </div>
 
   <?php if ($totalPages > 1): ?>
-    <nav class="pagination-bar" aria-label="Stories pagination">
-      <?php if ($page > 1): ?>
-        <a href="<?= ps_escape(reports_url_with_page($page - 1)) ?>" rel="prev">&laquo; Previous</a>
-      <?php endif; ?>
-
-      <?php
-      $start = max(1, $page - 2);
-      $end = min($totalPages, $page + 2);
-      if ($start > 1): ?>
-        <a href="<?= ps_escape(reports_url_with_page(1)) ?>">1</a>
-        <?php if ($start > 2): ?><span class="page-dots">&hellip;</span><?php endif; ?>
-      <?php endif; ?>
-
-      <?php for ($i = $start; $i <= $end; $i++): ?>
-        <?php if ($i === $page): ?>
-          <span class="page-current" aria-current="page"><?= $i ?></span>
-        <?php else: ?>
-          <a href="<?= ps_escape(reports_url_with_page($i)) ?>"><?= $i ?></a>
+    <div class="pagination-wrap">
+      <div class="pagination-info">Showing <?= min($totalReports, ($page - 1) * $perPage + 1) ?>–<?= min($totalReports, $page * $perPage) ?> of <?= number_format($totalReports) ?> stories (Page <?= $page ?> of <?= $totalPages ?>)</div>
+      <nav class="pagination-bar" aria-label="Stories pagination">
+        <?php if ($page > 1): ?>
+          <a href="<?= ps_escape(reports_url_with_page($page - 1)) ?>" rel="prev">&laquo; Previous</a>
         <?php endif; ?>
-      <?php endfor; ?>
 
-      <?php if ($end < $totalPages): ?>
-        <?php if ($end < $totalPages - 1): ?><span class="page-dots">&hellip;</span><?php endif; ?>
-        <a href="<?= ps_escape(reports_url_with_page($totalPages)) ?>"><?= $totalPages ?></a>
-      <?php endif; ?>
+        <?php
+        $start = max(1, $page - 2);
+        $end = min($totalPages, $page + 2);
+        if ($start > 1): ?>
+          <a href="<?= ps_escape(reports_url_with_page(1)) ?>">1</a>
+          <?php if ($start > 2): ?><span class="page-dots">&hellip;</span><?php endif; ?>
+        <?php endif; ?>
 
-      <?php if ($page < $totalPages): ?>
-        <a href="<?= ps_escape(reports_url_with_page($page + 1)) ?>" rel="next">Next &raquo;</a>
-      <?php endif; ?>
-    </nav>
+        <?php for ($i = $start; $i <= $end; $i++): ?>
+          <?php if ($i === $page): ?>
+            <span class="page-current" aria-current="page"><?= $i ?></span>
+          <?php else: ?>
+            <a href="<?= ps_escape(reports_url_with_page($i)) ?>"><?= $i ?></a>
+          <?php endif; ?>
+        <?php endfor; ?>
+
+        <?php if ($end < $totalPages): ?>
+          <?php if ($end < $totalPages - 1): ?><span class="page-dots">&hellip;</span><?php endif; ?>
+          <a href="<?= ps_escape(reports_url_with_page($totalPages)) ?>"><?= $totalPages ?></a>
+        <?php endif; ?>
+
+        <?php if ($page < $totalPages): ?>
+          <a href="<?= ps_escape(reports_url_with_page($page + 1)) ?>" rel="next">Next &raquo;</a>
+        <?php endif; ?>
+      </nav>
+    </div>
   <?php endif; ?>
 
 <?php else: ?>
