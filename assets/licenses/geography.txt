@@ -1,0 +1,46 @@
+HerMap location/map provenance — imported 10 October 2026
+
+Outline: Survey of India, Outline_of_India.zip, international boundary vector
+https://surveyofindia.gov.in/documents/Outline_of_India.zip
+https://surveyofindia.gov.in/pages/outline-maps-of-india
+Use notice: https://www.surveyofindia.gov.in/documents/ibd-vectorformat.pdf
+The notice permits non-commercial website use; commercial use requires contacting SoI.
+Not an endorsement. Source generalised at 1:16m. Transformed from supplied WGS84
+Lambert Conformal Conic projection to EPSG:4326, simplified by 150 m preserving
+topology, rounded to six decimal places. See scripts/convert-outline.py.
+Source ZIP SHA-256: 100878729a9a807afa804bc0a34b752e49fd764762b855a37a2f1adbd3904d4d
+
+PIN directory: dpnkrpl/indian-pincodes-database (historical), data.json
+https://github.com/dpnkrpl/indian-pincodes-database/
+Repository license: WTFPL; see indian-pincodes.txt.
+
+Approximate PIN centres and additional office records: GeoNames postal IN.zip
+https://download.geonames.org/export/zip/IN.zip
+https://www.geonames.org/
+GeoNames download README specifies Creative Commons Attribution 4.0:
+https://creativecommons.org/licenses/by/4.0/
+Modified by combining records, rejecting invalid PIN formats, normalising historical
+state names and merging territory aliases; PIN coordinates are medians of source
+coordinates. They are not PIN polygons or exact office entrances.
+No complete/current India Post coverage is claimed. Some entries lack coordinates.
+
+The data.gov.in sample endpoint timed out during this import. The supplied sample
+key is documented by that portal as limited to 10 records per request. It is not used
+in the browser or treated as a production data import credential.
+
+State and Union Territory boundaries: Survey of India / National Water Data Portal,
+National Water Informatics Centre (NWIC). Retrieved 10 October 2026.
+Dataset: https://nwdp.nwic.gov.in/hi/dataset/state-boundary
+Resource: https://nwdp.nwic.gov.in/hi/dataset/state-boundary/resource/f039e721-132c-4a24-9e5e-07af03064b4d
+Download: https://nwdp.nwic.gov.in/dataset/dd960900-34cc-4486-a95c-83200d2f2c7b/resource/f039e721-132c-4a24-9e5e-07af03064b4d/download/state_nwic_geojson.zip
+Resource metadata: Other (Open), last updated 1 May 2025.
+Copyright policy: https://nwdp.nwic.gov.in/hi/footer/copyrightPolicy
+Policy permits accurate, non-misleading reproduction with prominent acknowledgement;
+explicit third-party copyright remains subject to the copyright holder's conditions.
+Source identifies Survey of India; retain its attribution and non-commercial purpose.
+Converted EPSG:7755 to EPSG:4326, simplified by 500 m preserving topology,
+clipped to the official outline, rounded to six decimal places. Three spelling/name
+variants normalised. Display-only label points use representative interior points;
+island-group overview labels have explicit regional centres for readable navigation.
+Not a cadastral/jurisdiction map, official certification or government endorsement.
+See scripts/convert-states.py. Preserve source notices when reusing derivatives.

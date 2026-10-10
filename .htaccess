@@ -1,0 +1,12 @@
+Options -Indexes
+DirectoryIndex index.php
+AddType text/javascript .mjs
+RewriteEngine On
+# Includes, development files and secrets must never be served.
+RewriteRule ^(?:inc|scripts|tests|database|docs|node_modules|tmp|\.agents|\.npm-cache)(?:/|$) - [F,L,NC]
+RewriteRule (^|/)\. - [F,L]
+RewriteRule \.(?:sql|sqlite|bak|log)$ - [F,L,NC]
+RewriteRule ^(?:PLAN\.md|README\.md|CONTRIBUTING\.md|SECURITY\.md|package(?:-lock)?\.json)$ - [F,L,NC]
+RewriteCond %{REQUEST_FILENAME} !-f
+RewriteCond %{REQUEST_FILENAME} !-d
+RewriteRule ^ index.php [QSA,L]

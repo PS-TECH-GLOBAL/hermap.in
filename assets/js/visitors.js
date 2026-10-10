@@ -1,0 +1,11 @@
+'use strict';
+(() => {
+ const settings=document.getElementById('visitor-settings')||document.getElementById('map-settings');if(!settings)return;
+ const $=id=>document.getElementById(id),base=settings.dataset.apiUrl,reduced=matchMedia('(prefers-reduced-motion: reduce)'),frames=new Map(),targets=new Map();let visible=false;
+ function count(id,target){const element=$(id);if(!element)return;targets.set(id,target);if(!visible)return;cancelAnimationFrame(frames.get(id));const from=Number(element.dataset.count||0),start=performance.now();element.setAttribute('aria-label',target.toLocaleString('en-IN'));function draw(now){const progress=reduced.matches?1:Math.min(1,(now-start)/900),value=Math.round(from+(target-from)*(1-Math.pow(1-progress,3)));element.textContent=value.toLocaleString('en-IN');element.dataset.count=String(value);if(progress<1)frames.set(id,requestAnimationFrame(draw));else frames.delete(id);}frames.set(id,requestAnimationFrame(draw));}
+ const metrics=document.querySelector('.public-metrics');if(metrics){const observer=new IntersectionObserver(entries=>{if(entries.some(e=>e.isIntersecting)){visible=true;targets.forEach((target,id)=>count(id,target));observer.disconnect();}},{threshold:.15});observer.observe(metrics);}
+ async function api(path,body){const response=await fetch(base+path,{cache:'no-store',credentials:'same-origin',...(body?{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)}:{})});if(!response.ok)throw new Error();return response.json();}
+ async function stats(){if(!$('live-visits'))return;try{const data=await api('stats');count('live-visits',data.active_visits);count('total-visits',data.total_visits);count('total-reports',data.total_reports);$('stats-note').textContent=data.label+(data.since?` Launch: ${data.since} (IST).`:'');}catch{$('stats-note').textContent='Community counters are temporarily unavailable.';}}
+ async function heartbeat(){if(document.hidden)return;if(settings.dataset.visitToken)try{await api('heartbeat',{token:settings.dataset.visitToken});}catch{}stats();}
+ stats();setInterval(heartbeat,30000);document.addEventListener('visibilitychange',()=>{if(!document.hidden)heartbeat();});window.addEventListener('hermap-report-saved',stats);
+})();

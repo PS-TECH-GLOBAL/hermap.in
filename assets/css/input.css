@@ -1,0 +1,11 @@
+@import "tailwindcss";
+@source "../../*.php";
+@source "../../inc/*.php";
+@source "../js/app.js";
+@source "../js/map.js";
+@theme {
+  --color-brand: #240348;
+  --color-brand-accent: #ff6b6b;
+  --color-paper: #f7f6f2;
+  --font-sans: "Segoe UI", "Nirmala UI", system-ui, sans-serif;
+}

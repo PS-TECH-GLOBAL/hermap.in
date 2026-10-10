@@ -1,0 +1,2 @@
+<p class="policy-date">Draft updated: 10 October 2026 · India-first service</p>
+<div class="notice-box"><strong>Policy draft · local development service.</strong> Reports submitted here are saved privately. Legal operator and grievance officer details, hosting/log/back-up procedures and Indian legal review remain requirements before public deployment. Public support and privacy enquiries: <a href="mailto:<?= ps_escape(SUPPORT_EMAIL) ?>"><?= ps_escape(SUPPORT_EMAIL) ?></a>.</div>

@@ -1,0 +1,17 @@
+node_modules/
+.npm-cache/
+.env
+tmp/
+*.log
+.agents/
+.codex/
+ps_crm_*.sql
+private/
+*.bak
+*.dump
+*.zip
+*.sqlite
+admin-access.txt
+PLAN.md
+tests/legacy-preview-smoke.cjs
+assets/data/preview-locations.json

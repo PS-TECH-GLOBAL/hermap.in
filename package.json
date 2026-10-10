@@ -1,0 +1,22 @@
+{
+  "name": "hermap-in",
+  "version": "0.1.0",
+  "private": true,
+  "description": "HerMap.in — Know Before You Go.",
+  "scripts": {
+    "build": "node scripts/copy-vendor.cjs && npm run build:css",
+    "build:css": "tailwindcss -i ./assets/css/input.css -o ./assets/css/tailwind.min.css --minify",
+    "watch:css": "tailwindcss -i ./assets/css/input.css -o ./assets/css/tailwind.min.css --watch"
+  },
+  "dependencies": {
+    "@fortawesome/fontawesome-free": "7.3.1",
+    "maplibre-gl": "6.13.0"
+  },
+  "devDependencies": {
+    "@tailwindcss/cli": "4.3.3",
+    "tailwindcss": "4.3.3"
+  },
+  "overrides": {
+    "@parcel/watcher": "2.6.0"
+  }
+}
