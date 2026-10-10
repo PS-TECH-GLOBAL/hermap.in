@@ -4,6 +4,7 @@
  if(!('showPopover' in HTMLElement.prototype))return;
  let opened=null;
  document.querySelectorAll('select').forEach((select,index)=>{
+  if(select.hidden||select.hasAttribute('hidden')||select.closest('[hidden]'))return;
   const wrapper=document.createElement('div');wrapper.className='choice';select.before(wrapper);wrapper.append(select);select.classList.add('choice-native');select.tabIndex=-1;select.setAttribute('aria-hidden','true');
   const label=document.querySelector(`label[for="${select.id}"]`),name=label?.textContent.trim()||select.getAttribute('aria-label')||'Choose an option';
   const button=document.createElement('button'),value=document.createElement('span'),arrow=document.createElement('i');button.type='button';button.className='choice-trigger';button.setAttribute('aria-haspopup','listbox');button.setAttribute('aria-expanded','false');button.setAttribute('aria-label',name);arrow.className='fa-solid fa-chevron-down choice-arrow';arrow.setAttribute('aria-hidden','true');button.append(value,arrow);

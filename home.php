@@ -125,10 +125,12 @@ header('Cache-Control: no-store');
     <p class="emergency-note">In immediate danger? <a href="tel:112">Call 112</a>. HerMap cannot dispatch help or file a police complaint.</p>
     <form id="report-form" autocomplete="off">
       <!-- Hidden selects for backend submission & location-picker.js compatibility -->
-      <select id="report-country" hidden aria-hidden="true"><option value="101" selected>India</option></select>
-      <select id="report-state" hidden aria-hidden="true"><option value=""></option></select>
-      <select id="report-city" hidden aria-hidden="true"><option value=""></option></select>
-      <select id="report-post-office" hidden aria-hidden="true"><option value=""></option></select>
+      <div hidden class="sr-only" aria-hidden="true" style="display:none;">
+        <select id="report-country" hidden aria-hidden="true"><option value="101" selected>India</option></select>
+        <select id="report-state" hidden aria-hidden="true"><option value=""></option></select>
+        <select id="report-city" hidden aria-hidden="true"><option value=""></option></select>
+        <select id="report-post-office" hidden aria-hidden="true"><option value=""></option></select>
+      </div>
 
       <!-- Step 1: Location (on top) -->
       <div class="form-section form-section-location">
