@@ -196,9 +196,17 @@ function ps_summary(?int $x,?int $y,int|string $days):array {
     $where="r.status='approved' AND r.approved_at<=?";
     $params=[gmdate('Y-m-d H:i:s',time()-PUBLICATION_DELAY_HOURS*3600)];
     if(!$isLifetime){
-        $numDays=max(1,(int)$days);
-        $where.=" AND r.incident_date>=?";
-        $params[]=(new DateTimeImmutable('today',new DateTimeZone('Asia/Kolkata')))->sub(new DateInterval('P'.($numDays-1).'D'))->format('Y-m-d');
+        if((int)$days===1){
+            $cutoff=(new DateTimeImmutable('now',new DateTimeZone('Asia/Kolkata')))->sub(new DateInterval('P1D'));
+            $where.=" AND (r.incident_date > ? OR (r.incident_date = ? AND r.incident_hour >= ?))";
+            $params[]=$cutoff->format('Y-m-d');
+            $params[]=$cutoff->format('Y-m-d');
+            $params[]=(int)$cutoff->format('G');
+        } else {
+            $numDays=max(1,(int)$days);
+            $where.=" AND r.incident_date>=?";
+            $params[]=(new DateTimeImmutable('today',new DateTimeZone('Asia/Kolkata')))->sub(new DateInterval('P'.($numDays-1).'D'))->format('Y-m-d');
+        }
     }
     if($x!==null && $y!==null){$where.=' AND r.cell_x=? AND r.cell_y=?';$params[]=$x;$params[]=$y;}
     $db=ps_db();$stmt=$db->prepare("SELECT COUNT(*) FROM hm_incidents r WHERE $where");$stmt->execute($params);$count=(int)$stmt->fetchColumn();

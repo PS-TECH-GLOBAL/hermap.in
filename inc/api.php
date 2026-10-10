@@ -53,8 +53,8 @@ try {
     ps_json(['items'=>$items,'note'=>'PIN/post-office centres are approximate; PINs are not polygons.']);
   }
   if($name==='summary' || $name==='zones') {
-    $rawDays=strtolower(trim((string)($_GET['days'] ?? '90')));
-    if(!in_array($rawDays,['7','30','90','365','all','0'],true)) throw new HerMapError('Choose a valid reporting window.');
+    $rawDays=strtolower(trim((string)($_GET['days'] ?? '7')));
+    if(!in_array($rawDays,['1','7','30','90','365','all','0'],true)) throw new HerMapError('Choose a valid reporting window.');
     $days=($rawDays==='all'||$rawDays==='0')?'all':(int)$rawDays;
     if($name==='summary') {
       $x=$y=null;
@@ -65,8 +65,16 @@ try {
     $whereZones="r.status='approved' AND r.approved_at<=?";
     $paramsZones=[gmdate('Y-m-d H:i:s',time()-PUBLICATION_DELAY_HOURS*3600)];
     if($days!=='all'){
-      $whereZones.=" AND r.incident_date>=?";
-      $paramsZones[]=(new DateTimeImmutable('today',new DateTimeZone('Asia/Kolkata')))->sub(new DateInterval('P'.($days-1).'D'))->format('Y-m-d');
+      if($days===1){
+        $cutoff=(new DateTimeImmutable('now',new DateTimeZone('Asia/Kolkata')))->sub(new DateInterval('P1D'));
+        $whereZones.=" AND (r.incident_date > ? OR (r.incident_date = ? AND r.incident_hour >= ?))";
+        $paramsZones[]=$cutoff->format('Y-m-d');
+        $paramsZones[]=$cutoff->format('Y-m-d');
+        $paramsZones[]=(int)$cutoff->format('G');
+      } else {
+        $whereZones.=" AND r.incident_date>=?";
+        $paramsZones[]=(new DateTimeImmutable('today',new DateTimeZone('Asia/Kolkata')))->sub(new DateInterval('P'.($days-1).'D'))->format('Y-m-d');
+      }
     }
     $stmt=ps_db()->prepare("SELECT r.cell_x, r.cell_y, COUNT(*) n, MAX(p.office_name) office_name, MAX(p.pincode) pincode, MAX(p.district) district, MAX(c.name) city_name, MAX(s.name) state_name FROM hm_incidents r LEFT JOIN hm_post_offices p ON p.id=r.post_office_id LEFT JOIN hm_states s ON s.id=r.state_id LEFT JOIN hm_cities c ON c.id=r.city_id WHERE $whereZones GROUP BY r.cell_x, r.cell_y HAVING n>=? LIMIT 10000");
     $paramsZones[]=PUBLIC_MIN_REPORTS;

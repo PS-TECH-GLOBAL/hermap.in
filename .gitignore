@@ -19,6 +19,8 @@ private/
 *.log
 
 # Databases, backups and database dumps
+*.sql
+!database/schema.sql
 ps_crm_*.sql
 *.sql.gz
 *.bak

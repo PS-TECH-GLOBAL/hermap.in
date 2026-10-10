@@ -35,7 +35,7 @@ header('Cache-Control: no-store');
     <div class="area-divider"></div>
     <div class="area-heading"><span class="area-icon"><?= ps_icon('location-dot') ?></span><div><span class="small-label">You’re exploring</span><h2 id="area-name">India overview</h2></div><button class="icon-button" id="reset-area" type="button" aria-label="Reset India view"><?= ps_icon('arrow-rotate-left') ?></button></div>
     <label class="small-label filter-label" for="time-window">Reporting window</label>
-    <select id="time-window"><option value="7">Past 7 days</option><option value="90" selected>Past 90 days</option><option value="365">Past 12 months</option><option value="all">Lifetime</option></select>
+    <select id="time-window"><option value="1">Past 24 Hours</option><option value="7" selected>Past 7 Days</option><option value="30">Past 30 Days</option><option value="90">90 Days</option><option value="365">12 Months</option><option value="all">All Time</option></select>
     <div class="empty-state" role="status" aria-live="polite">
       <strong id="area-total">Loading report summary…</strong>
       <p id="area-summary">No data does not mean an area is safe.</p>
