@@ -39,6 +39,29 @@ try{
  // Assert threshold on an otherwise empty cell; do not assume the entire installation is empty.
  if(!$before['available']){for($i=0;$i<4;$i++)$fixture();check(!ps_summary($x,$y,30)['available'],'Sparse group exposed.');$fixture();$summary=ps_summary($x,$y,30);check($summary['available']&&$summary['total']==='5–9','Eligible group/count band failed.');check($summary['category']==='Workplace or office harassment'&&$summary['hour']==='9 pm–10 pm IST'&&$summary['day']==='Monday','Category/time/day summary failed.');$fixture('pending');$fixture('approved','now');$fixture('approved','-3 days',gmdate('Y-m-d',time()-60*86400));check(ps_summary($x,$y,30)['total']==='5–9','Review/delay/window filtering failed.');check(!str_contains(json_encode($summary),'receipt_hash')&&!isset($summary['reports']),'Private fields leaked.');}
  $db->rollBack();check(ps_summary($x,$y,30)===$before,'Fixture rollback failed.');
+ check($db->query("SHOW TABLES LIKE 'hm_contact_messages'")->fetchColumn() === 'hm_contact_messages', 'hm_contact_messages table missing.');
+ check($db->query("SHOW TABLES LIKE 'hm_admins'")->fetchColumn() === 'hm_admins', 'hm_admins table missing.');
+ check($db->query("SHOW TABLES LIKE 'hm_settings'")->fetchColumn() === 'hm_settings', 'hm_settings table missing.');
+ $modCols = $db->query("SHOW COLUMNS FROM hm_moderation_actions")->fetchAll(PDO::FETCH_COLUMN);
+ check(in_array('reason', $modCols, true) && in_array('notes', $modCols, true), 'Moderation reason or notes column missing.');
+ ps_set_setting('test_key', 'test_val_123');
+ check(ps_setting('test_key') === 'test_val_123', 'ps_setting/ps_set_setting failed.');
+ $db->prepare("DELETE FROM hm_settings WHERE setting_key = 'test_key'")->execute();
+ check(!ps_in_india(10.0, 50.0), 'AABB accepted point outside latitude.');
+ check(!ps_in_india(100.0, 20.0), 'AABB accepted point outside longitude.');
+ $ticketTest = 'HM-TEST-' . bin2hex(random_bytes(3));
+ $db->prepare("INSERT INTO hm_contact_messages (ticket_id, category, name, email, subject, message, status, ip_hash) VALUES (?, 'privacy_request', 'Tester', 'test@example.com', 'Subject', 'Message text content here', 'new', 'hash')")->execute([$ticketTest]);
+ $inq = $db->prepare("SELECT * FROM hm_contact_messages WHERE ticket_id = ?");
+ $inq->execute([$ticketTest]);
+ $inqRow = $inq->fetch();
+ check($inqRow && $inqRow['status'] === 'new' && $inqRow['category'] === 'privacy_request', 'Contact message insertion/retrieval failed.');
+ $db->prepare("UPDATE hm_contact_messages SET status = 'in_progress', admin_notes = 'Reviewing' WHERE id = ?")->execute([$inqRow['id']]);
+ $db->prepare("DELETE FROM hm_contact_messages WHERE id = ?")->execute([$inqRow['id']]);
+ $testPlain = "This is a sensitive message for testing encryption. " . bin2hex(random_bytes(8));
+ $testEnc = ps_encrypt_string($testPlain);
+ check($testEnc !== null && !str_contains($testEnc, $testPlain), 'ps_encrypt_string failed to encrypt or leaked plaintext.');
+ check(ps_decrypt_string($testEnc) === $testPlain, 'ps_decrypt_string failed to decrypt matching string.');
+ check(ps_decrypt_string(null) === '' && ps_decrypt_string('') === '', 'ps_decrypt_string blank handling failed.');
  if(!in_array('--http',$argv,true)){echo "$checks backend checks passed; all fixtures rolled back.\n";exit;}
  $base=rtrim(getenv('HERMAP_TEST_URL') ?: 'http://127.0.0.1:8095','/');$curl=curl_init();$cookies=ROOT_PATH.'/tmp/http-test-'.bin2hex(random_bytes(8)).'.txt';
  // A separate loopback source isolates test rate limits from the user's browser.
@@ -52,6 +75,9 @@ try{
  [$status,$text]=$request('/api/stats');$visitsBefore=json_decode($text,true)['total_visits'];
  [$status,$text]=$request('/about');preg_match('/data-visit-token="([a-f0-9]{48})"/',$text,$visitMatch);$visitToken=$visitMatch[1]??'';$visitHash=hash('sha256',$visitToken);$visitCountedDay=(new DateTimeImmutable('now',new DateTimeZone('Asia/Kolkata')))->format('Y-m-d');check($status===200&&strlen($visitToken)===48,'Public page visit tracking failed.');
  [$status,$text]=$request('/api/stats');check(json_decode($text,true)['total_visits']===$visitsBefore+1,'Public page load did not increment total visits exactly once.');
+ check(isset(json_decode($text,true)['reports_7d']),'reports_7d missing from stats payload.');
+ [$status,$text]=$request('/about');
+ [$status,$text]=$request('/api/stats');check(json_decode($text,true)['total_visits']===$visitsBefore+1,'Page reload within 24-hour session incorrectly incremented visit count.');
  $db->prepare('UPDATE hm_live_visits SET expires_at=DATE_SUB(UTC_TIMESTAMP(),INTERVAL 3 MINUTE) WHERE token_hash=?')->execute([$visitHash]);
  [$status,$text]=$request('/api/heartbeat',['token'=>$visitToken]);check($status===200&&json_decode($text,true)['active']===true,'A returning visible visit could not renew.');
  [$status,$text]=$request('/api/stats');check(json_decode($text,true)['total_visits']===$visitsBefore+1,'API reads/heartbeat incorrectly increment total visits.');
@@ -63,11 +89,15 @@ try{
  [$status,$text]=$request('/api/challenge');$challenge=json_decode($text,true);preg_match('/(\d+) ([+−]) (\d+)/u',$challenge['question'],$parts);$body['csrf']=$challenge['csrf'];$body['challenge_id']=$challenge['id'];$body['challenge_answer']=(string)($parts[2]==='+'?(int)$parts[1]+(int)$parts[3]:(int)$parts[1]-(int)$parts[3]);sleep(2);
  $body['category']='online';$body['online_handle']='@hermap_fictional_test';$body['online_platform']='Example platform';
  $body['share_location']=true;$body['latitude']='28.6139';$body['longitude']='77.209';
+ $body['message']='Testing sensitive private description for moderation review.';
  [$status,$text]=$request('/api/reports',$body);$saved=json_decode($text,true);check($status===201&&preg_match('/^[a-f0-9]{48}$/',$saved['receipt']??''),'Real submission did not save.');
  $stmt=$db->prepare('SELECT * FROM hm_incidents WHERE receipt_hash=?');$stmt->execute([hash('sha256',$saved['receipt'])]);$record=$stmt->fetch();$createdId=$record['id']??null;$countedDay=(new DateTimeImmutable('now',new DateTimeZone('Asia/Kolkata')))->format('Y-m-d');check($createdId!==null&&$record['status']==='pending','Submission did not enter private queue.');check(ps_decrypt_venue($record['venue_encrypted'])['name']===$body['venue_name'],'Private venue not stored encrypted.');
  check(ps_decrypt_venue($record['venue_encrypted'])['handle']===$body['online_handle']&&!str_contains($record['venue_encrypted'],$body['online_handle']),'Online account handle not stored encrypted.');
+ check(ps_decrypt_string($record['message_encrypted'])===$body['message'],'Private message not stored encrypted.');
+ check(!str_contains($record['message_encrypted'],$body['message']),'Private message raw text exposed in cipher.');
  $private=ps_decrypt_venue($record['venue_encrypted']);check($private['latitude']==='28.6139'&&$private['longitude']==='77.209'&&(int)$record['cell_x']===(int)floor(77.209*4),'Shared point did not save encrypted/assign broad cell.');
  [$status,$public]=$request('/api/summary?days=30');check(!str_contains($public,$body['online_handle'])&&!str_contains($public,$body['venue_name']),'Private context exposed in public summary.');
+ check(!str_contains($public,'Testing sensitive private description'),'Private report message exposed in public summary.');
  check(!str_contains($public,'28.6139')&&!str_contains($public,'77.209'),'Precise shared coordinates exposed publicly.');
  [$status]=$request('/api/reports',$body);check($status===422,'Challenge replay accepted.');
  [$status,$text]=$request('/api/challenge');$duplicate=json_decode($text,true);preg_match('/(\d+) ([+−]) (\d+)/u',$duplicate['question'],$parts);$body['csrf']=$duplicate['csrf'];$body['challenge_id']=$duplicate['id'];$body['challenge_answer']=(string)($parts[2]==='+'?(int)$parts[1]+(int)$parts[3]:(int)$parts[1]-(int)$parts[3]);sleep(2);[$status]=$request('/api/reports',$body);check($status===409,'Duplicate report accepted.');
@@ -76,7 +106,7 @@ try{
  $access=file_get_contents($accessPath);preg_match('/^Password: (.+)$/m',$access,$match);$password=trim($match[1]??'');
  [$status]=$request('/admin',['csrf'=>$adminCsrf,'action'=>'login','username'=>'amit','password'=>$password,'otp'=>'bad'],true);check($status===200,'Unexpected login response.');
  [$status]=$request('/admin',['csrf'=>$adminCsrf,'action'=>'login','username'=>'amit','password'=>$password,'otp'=>ps_totp(getenv('ADMIN_TOTP_SECRET'),(int)floor(time()/30))],true);check($status===303,'Password plus TOTP login failed.');
- [$status,$text]=$request('/admin');check(str_contains($text,'Reports all time')&&str_contains($text,'chart-group')&&str_contains($text,ps_escape($body['venue_name'])),'Dashboard/private queue missing.');preg_match('/name="csrf" value="([a-f0-9]+)"/',$text,$match);$adminCsrf=$match[1];
+ [$status,$text]=$request('/admin');check(str_contains($text,'Reports all time')&&str_contains($text,'chart-group')&&str_contains($text,ps_escape($body['venue_name']))&&str_contains($text,ps_escape($body['message'])),'Dashboard/private queue or message missing.');preg_match('/name="csrf" value="([a-f0-9]+)"/',$text,$match);$adminCsrf=$match[1];
  [$status,$text]=$request('/api/admin-stats');$dashboard=json_decode($text,true);check($status===200&&isset($dashboard['metrics']['Reports this week'],$dashboard['daily']),'Live admin dashboard data failed.');
  [$status]=$request('/admin',['csrf'=>'bad','action'=>'approve','report_id'=>$createdId],true);$stmt->execute([hash('sha256',$saved['receipt'])]);check($stmt->fetch()['status']==='pending','Moderation bypassed CSRF.');
  [$status]=$request('/admin',['csrf'=>$adminCsrf,'action'=>'approve','report_id'=>$createdId],true);check($status===303,'Moderator approval failed.');$stmt->execute([hash('sha256',$saved['receipt'])]);check($stmt->fetch()['status']==='approved','Review not persisted.');

@@ -69,19 +69,56 @@ function ps_decrypt_venue(?string $cipher):array {
     $json=$raw && $key ? openssl_decrypt(substr($raw,28),'aes-256-gcm',$key,OPENSSL_RAW_DATA,substr($raw,0,12),substr($raw,12,16),'HerMap venue v1') : false;
     return $json ? json_decode($json,true,512,JSON_THROW_ON_ERROR) : ['name'=>'Unable to decrypt','website'=>''];
 }
+function ps_encrypt_string(?string $text):?string {
+    $text = trim((string)$text);
+    if($text === '') return null;
+    $key = hex2bin(getenv('APP_ENCRYPTION_KEY') ?: '');
+    if(!$key || strlen($key)!==32) throw new HerMapError('Secure storage is not configured.',503);
+    $iv = random_bytes(12); $tag = '';
+    $cipher = openssl_encrypt($text, 'aes-256-gcm', $key, OPENSSL_RAW_DATA, $iv, $tag, 'HerMap message v1');
+    if($cipher === false) throw new HerMapError('Secure storage is unavailable.',503);
+    return base64_encode($iv . $tag . $cipher);
+}
+function ps_decrypt_string(?string $cipher):string {
+    if(!$cipher) return '';
+    $raw = base64_decode($cipher, true); $key = hex2bin(getenv('APP_ENCRYPTION_KEY') ?: '');
+    if(!$raw || strlen($raw) < 28 || !$key || strlen($key)!==32) return '';
+    $text = openssl_decrypt(substr($raw, 28), 'aes-256-gcm', $key, OPENSSL_RAW_DATA, substr($raw, 0, 12), substr($raw, 12, 16), 'HerMap message v1');
+    return $text !== false ? $text : 'Unable to decrypt';
+}
 function ps_ring_contains(array $ring,float $lng,float $lat):bool {
     $inside=false;$j=count($ring)-1;
     foreach($ring as $i=>$p){$q=$ring[$j]; if(($p[1]>$lat)!==($q[1]>$lat) && $lng<($q[0]-$p[0])*($lat-$p[1])/($q[1]-$p[1])+$p[0]) $inside=!$inside; $j=$i;}
     return $inside;
 }
 function ps_in_india(float $lng,float $lat):bool {
+    if($lat < 6.0 || $lat > 38.0 || $lng < 68.0 || $lng > 98.0) return false;
     static $polygons=null;
     $polygons ??= json_decode(file_get_contents(ROOT_PATH.'/assets/data/india-outline.geojson'),true,512,JSON_THROW_ON_ERROR)['features'][0]['geometry']['coordinates'];
     foreach($polygons as $rings) {if(ps_ring_contains($rings[0],$lng,$lat)) {foreach(array_slice($rings,1) as $hole) if(ps_ring_contains($hole,$lng,$lat)) return false; return true;}}
     return false;
 }
+function ps_setting(string $key, ?string $default = null): string {
+    static $cache = [];
+    if (array_key_exists($key, $cache)) return $cache[$key];
+    try {
+        $stmt = ps_db()->prepare("SELECT setting_value FROM hm_settings WHERE setting_key = ?");
+        $stmt->execute([$key]);
+        $val = $stmt->fetchColumn();
+        if ($val !== false) return $cache[$key] = (string)$val;
+    } catch (Throwable) {}
+    $envVal = getenv(strtoupper($key));
+    if ($envVal !== false) return $cache[$key] = (string)$envVal;
+    return $cache[$key] = ($default ?? '');
+}
+function ps_set_setting(string $key, string $value): void {
+    $db = ps_db();
+    $stmt = $db->prepare("INSERT INTO hm_settings (setting_key, setting_value) VALUES (?, ?) ON DUPLICATE KEY UPDATE setting_value = ?");
+    $stmt->execute([$key, $value, $value]);
+}
 function ps_save_incident(array $body):array {
-    if(!INTAKE_ENABLED) throw new HerMapError('Report intake is currently closed.',503);
+    $intake = ps_setting('report_intake_enabled', INTAKE_ENABLED ? '1' : '0');
+    if($intake !== '1') throw new HerMapError('Report intake is currently closed.',503);
     if(PROD && (empty($_SERVER['HTTPS']) || $_SERVER['HTTPS']==='off')) throw new HerMapError('A secure HTTPS connection is required.',503);
     ps_require_csrf((string)($body['csrf'] ?? ''));ps_rate_limit('report',8);ps_validate_challenge($body);
     if(($body['consent'] ?? false)!==true || ($body['adult'] ?? false)!==true) throw new HerMapError('Please confirm the privacy notice and that you are 18 or older.',422);
@@ -99,6 +136,8 @@ function ps_save_incident(array $body):array {
     if(mb_strlen($name)>120 || strlen($website)>300 || preg_match('/[\x00-\x1f<>]/u',$name)) throw new HerMapError('Please check the venue details.',422);
     if($website!=='' && (!filter_var($website,FILTER_VALIDATE_URL) || !in_array(strtolower(parse_url($website,PHP_URL_SCHEME) ?: ''),['http','https'],true) || parse_url($website,PHP_URL_USER) || parse_url($website,PHP_URL_PASS))) throw new HerMapError('Use a public http or https website without login information.',422);
     if(!in_array($place,['office','cafe','hotel','landmark'],true)) {$name='';$website='';}
+    $message=trim((string)($body['message'] ?? ''));
+    if(mb_strlen($message)>1000) throw new HerMapError('Message cannot exceed 1,000 characters.',422);
     $online=ps_online_details($body,$category,$place);
     $point=ps_optional_location($body,(float)$location['latitude'],(float)$location['longitude']);
     $cellX=(int)floor((float)($point['longitude']!==''?$point['longitude']:$location['longitude'])*4);$cellY=(int)floor((float)($point['latitude']!==''?$point['latitude']:$location['latitude'])*4);
@@ -107,8 +146,8 @@ function ps_save_incident(array $body):array {
     $fingerprint=hash_hmac('sha256',implode('|',$duplicateParts),ps_secret());
     $receipt=bin2hex(random_bytes(24));$id=bin2hex(random_bytes(16));$db=ps_db();$db->beginTransaction();
     try {
-        $stmt=$db->prepare('INSERT INTO hm_incidents(id,category,place_type,state_id,city_id,post_office_id,cell_x,cell_y,incident_date,incident_hour,incident_minute,venue_encrypted,receipt_hash,duplicate_hash,delete_after) VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)');
-        $stmt->execute([$id,$category,$place,$state,$location['city_id'],$office,$cellX,$cellY,$date,(int)$when->format('G'),(int)$when->format('i'),ps_encrypt_venue(['name'=>$name,'website'=>$website]+$online+$point),hash('sha256',$receipt),$fingerprint,gmdate('Y-m-d H:i:s',time()+400*86400)]);
+        $stmt=$db->prepare('INSERT INTO hm_incidents(id,category,place_type,state_id,city_id,post_office_id,cell_x,cell_y,incident_date,incident_hour,incident_minute,venue_encrypted,message_encrypted,receipt_hash,duplicate_hash,delete_after) VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)');
+        $stmt->execute([$id,$category,$place,$state,$location['city_id'],$office,$cellX,$cellY,$date,(int)$when->format('G'),(int)$when->format('i'),ps_encrypt_venue(['name'=>$name,'website'=>$website]+$online+$point),ps_encrypt_string($message),hash('sha256',$receipt),$fingerprint,gmdate('Y-m-d H:i:s',time()+400*86400)]);
         $db->prepare('INSERT INTO hm_site_daily(day,received_reports) VALUES(?,1) ON DUPLICATE KEY UPDATE received_reports=received_reports+1')->execute([$now->format('Y-m-d')]);
         $db->commit();
     }catch(PDOException $e){$db->rollBack();if($e->getCode()==='23000') throw new HerMapError('A matching report already exists. Please avoid submitting the same experience twice.',409);throw $e;}catch(Throwable $e){$db->rollBack();throw $e;}
@@ -157,10 +196,17 @@ function ps_summary(?int $x,?int $y,int $days):array {
 function ps_site_stats():array {
     ps_cleanup();
     $db=ps_db();$totals=$db->query('SELECT COALESCE(SUM(visits),0) visits,COALESCE(SUM(received_reports),0) reports,MIN(day) launched FROM hm_site_daily')->fetch();
-    return ['active_visits'=>(int)$db->query('SELECT COUNT(*) FROM hm_live_visits WHERE expires_at>UTC_TIMESTAMP()')->fetchColumn(),'total_visits'=>(int)$totals['visits'],'total_reports'=>(int)$totals['reports'],'since'=>$totals['launched'],'label'=>'Active visits in the last 2 minutes. Visits count public-page loads, not unique people. Report totals include received reports before moderation.'];
+    $todayKolkata=new DateTimeImmutable('today',new DateTimeZone('Asia/Kolkata'));
+    $sevenDaysAgo=$todayKolkata->sub(new DateInterval('P6D'))->format('Y-m-d');
+    $stmt7=$db->prepare('SELECT COALESCE(SUM(received_reports),0) FROM hm_site_daily WHERE day>=?');
+    $stmt7->execute([$sevenDaysAgo]);
+    $reports7d=(int)$stmt7->fetchColumn();
+    $recentIncidents=(int)$db->query("SELECT COUNT(*) FROM hm_incidents WHERE submitted_at>=DATE_SUB(UTC_TIMESTAMP(),INTERVAL 7 DAY)")->fetchColumn();
+    $reports7d=max($reports7d,$recentIncidents);
+    return ['reports_7d'=>$reports7d,'total_reports'=>(int)$totals['reports'],'active_visits'=>(int)$db->query('SELECT COUNT(*) FROM hm_live_visits WHERE expires_at>UTC_TIMESTAMP()')->fetchColumn(),'total_visits'=>(int)$totals['visits'],'since'=>$totals['launched'],'label'=>'Unique visitors tracked by 24-hour session. Received reports include submissions awaiting review.'];
 }
-function ps_cleanup():void {
-    // Bounded batches also run on traffic; the CLI job can clear a longer backlog.
+function ps_cleanup(bool $force=false):void {
+    if(!$force && PHP_SAPI!=='cli' && random_int(1,500)!==1) return;
     $db=ps_db();
     $db->exec('DELETE FROM hm_live_visits WHERE expires_at<DATE_SUB(UTC_TIMESTAMP(),INTERVAL 1 DAY) LIMIT 500');
     $db->exec('DELETE FROM hm_rate_limits WHERE expires_at<UTC_TIMESTAMP() LIMIT 500');
@@ -168,9 +214,30 @@ function ps_cleanup():void {
     $db->exec('DELETE FROM hm_moderation_actions WHERE created_at<DATE_SUB(UTC_TIMESTAMP(),INTERVAL 400 DAY) LIMIT 100');
 }
 function ps_start_visit():string {
-    $token=bin2hex(random_bytes(24));$db=ps_db();$db->beginTransaction();
-    try{$db->prepare('INSERT INTO hm_live_visits(token_hash,expires_at) VALUES(?,?)')->execute([hash('sha256',$token),gmdate('Y-m-d H:i:s',time()+120)]);
-    $db->prepare('INSERT INTO hm_site_daily(day,visits) VALUES(?,1) ON DUPLICATE KEY UPDATE visits=visits+1')->execute([(new DateTimeImmutable('now',new DateTimeZone('Asia/Kolkata')))->format('Y-m-d')]);$db->commit();}catch(Throwable $e){$db->rollBack();throw $e;}
+    ps_session();
+    $existing=$_COOKIE['hm_visitor'] ?? $_SESSION['hm_visitor_token'] ?? '';
+    if(is_string($existing) && preg_match('/^[a-f0-9]{48}$/',$existing)) {
+        $token=$existing;
+        $db=ps_db();
+        $db->prepare('INSERT INTO hm_live_visits(token_hash,expires_at) VALUES(?,?) ON DUPLICATE KEY UPDATE expires_at=?')
+           ->execute([hash('sha256',$token),gmdate('Y-m-d H:i:s',time()+120),gmdate('Y-m-d H:i:s',time()+120)]);
+        return $token;
+    }
+    $token=bin2hex(random_bytes(24));
+    $_SESSION['hm_visitor_token']=$token;
+    $_SESSION['hm_visitor_time']=time();
+    if(!headers_sent()){
+        $cookiePath=parse_url(SITE_URL,PHP_URL_PATH) ?: '/';
+        setcookie('hm_visitor',$token,['expires'=>time()+86400,'path'=>$cookiePath,'secure'=>!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS']!=='off','httponly'=>true,'samesite'=>'Lax']);
+    }
+    $db=ps_db();$db->beginTransaction();
+    try{
+        $db->prepare('INSERT INTO hm_live_visits(token_hash,expires_at) VALUES(?,?) ON DUPLICATE KEY UPDATE expires_at=?')
+           ->execute([hash('sha256',$token),gmdate('Y-m-d H:i:s',time()+120),gmdate('Y-m-d H:i:s',time()+120)]);
+        $db->prepare('INSERT INTO hm_site_daily(day,visits) VALUES(?,1) ON DUPLICATE KEY UPDATE visits=visits+1')
+           ->execute([(new DateTimeImmutable('now',new DateTimeZone('Asia/Kolkata')))->format('Y-m-d')]);
+        $db->commit();
+    }catch(Throwable $e){$db->rollBack();throw $e;}
     return $token;
 }
 function ps_totp(string $secret,int $step):string {
@@ -189,5 +256,6 @@ function ps_admin_stats():array {
     $today=new DateTimeImmutable('today',new DateTimeZone('Asia/Kolkata'));
     $sum=fn(string $from)=>array_sum(array_map(fn($row)=>$row['day']>=$from?(int)$row['received_reports']:0,$daily));
     $counts=$db->query('SELECT status,COUNT(*) n FROM hm_incidents GROUP BY status')->fetchAll(PDO::FETCH_KEY_PAIR);
-    return ['metrics'=>['Reports today'=>$sum($today->format('Y-m-d')),'Reports this week'=>$sum($today->modify('monday this week')->format('Y-m-d')),'Reports this month'=>$sum($today->format('Y-m-01')),'Reports all time'=>$stats['total_reports'],'Pending review'=>(int)($counts['pending']??0),'Total page visits'=>$stats['total_visits'],'Active visits'=>$stats['active_visits'],'Approved reports'=>(int)($counts['approved']??0)],'daily'=>$daily,'today'=>$today->format('Y-m-d')];
+    $newInquiries=(int)($db->query("SELECT COUNT(*) FROM hm_contact_messages WHERE status='new'")->fetchColumn()?:0);
+    return ['metrics'=>['Reports today'=>$sum($today->format('Y-m-d')),'Reports this week'=>$sum($today->modify('monday this week')->format('Y-m-d')),'Reports this month'=>$sum($today->format('Y-m-01')),'Reports all time'=>$stats['total_reports'],'Pending review'=>(int)($counts['pending']??0),'New inquiries'=>$newInquiries,'Total page visits'=>$stats['total_visits'],'Active visits'=>$stats['active_visits'],'Approved reports'=>(int)($counts['approved']??0)],'daily'=>$daily,'today'=>$today->format('Y-m-d')];
 }

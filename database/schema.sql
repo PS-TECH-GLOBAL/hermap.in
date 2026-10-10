@@ -19,7 +19,7 @@ CREATE TABLE IF NOT EXISTS hm_incidents (
  state_id INT NOT NULL, city_id INT NULL, post_office_id INT NOT NULL,
  cell_x SMALLINT NOT NULL, cell_y SMALLINT NOT NULL,
  incident_date DATE NOT NULL, incident_hour TINYINT UNSIGNED NOT NULL,
- incident_minute TINYINT UNSIGNED NOT NULL, venue_encrypted TEXT NULL,
+ incident_minute TINYINT UNSIGNED NOT NULL, venue_encrypted TEXT NULL, message_encrypted TEXT NULL,
  status ENUM('pending','approved','rejected') NOT NULL DEFAULT 'pending',
  receipt_hash CHAR(64) NOT NULL UNIQUE, duplicate_hash CHAR(64) NOT NULL UNIQUE,
  submitted_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP, approved_at DATETIME NULL,
@@ -33,7 +33,7 @@ CREATE TABLE IF NOT EXISTS hm_rate_limits (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 CREATE TABLE IF NOT EXISTS hm_moderation_actions (
  id BIGINT AUTO_INCREMENT PRIMARY KEY, report_id CHAR(32) NULL, moderator VARCHAR(80) NOT NULL,
- action VARCHAR(20) NOT NULL, created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+ action VARCHAR(20) NOT NULL, reason VARCHAR(60) NULL, notes TEXT NULL, created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
  FOREIGN KEY(report_id) REFERENCES hm_incidents(id) ON DELETE SET NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 CREATE TABLE IF NOT EXISTS hm_imports (
@@ -46,4 +46,23 @@ CREATE TABLE IF NOT EXISTS hm_site_daily (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 CREATE TABLE IF NOT EXISTS hm_live_visits (
  token_hash CHAR(64) PRIMARY KEY, expires_at DATETIME NOT NULL, KEY(expires_at)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+CREATE TABLE IF NOT EXISTS hm_contact_messages (
+ id BIGINT AUTO_INCREMENT PRIMARY KEY, ticket_id CHAR(16) NOT NULL UNIQUE,
+ category ENUM('general', 'privacy_request', 'content_concern', 'legal_grievance', 'bug_report') NOT NULL DEFAULT 'general',
+ name VARCHAR(100) NOT NULL, email VARCHAR(255) NOT NULL, subject VARCHAR(150) NOT NULL,
+ message TEXT NOT NULL, status ENUM('new', 'in_progress', 'resolved', 'spam') NOT NULL DEFAULT 'new',
+ admin_notes TEXT NULL, ip_hash CHAR(64) NOT NULL, created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+ resolved_at DATETIME NULL, KEY(status, created_at), KEY(category)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+CREATE TABLE IF NOT EXISTS hm_admins (
+ id INT AUTO_INCREMENT PRIMARY KEY, username VARCHAR(50) NOT NULL UNIQUE,
+ password_hash VARCHAR(255) NOT NULL, totp_secret VARCHAR(64) NOT NULL,
+ role ENUM('superadmin', 'moderator') NOT NULL DEFAULT 'moderator',
+ is_active TINYINT(1) NOT NULL DEFAULT 1, last_login_at DATETIME NULL,
+ created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+CREATE TABLE IF NOT EXISTS hm_settings (
+ setting_key VARCHAR(64) PRIMARY KEY, setting_value TEXT NOT NULL,
+ updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;

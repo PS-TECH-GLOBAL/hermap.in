@@ -42,7 +42,6 @@ header('Cache-Control: no-store');
   </section>
   <div class="preview-label panel"><span class="status-dot"></span> Community reports <span class="preview-detail">· Reviewed &amp; grouped</span></div>
   <aside class="map-legend panel" aria-label="Map legend"><span class="legend-scale" aria-hidden="true"></span><div><strong>Lower → higher reporting activity</strong><span>Grey: insufficient information. Colours do not measure safety.</span></div></aside>
-  <nav class="island-controls panel" aria-label="Explore island groups"><button type="button" id="show-lakshadweep">Lakshadweep <?= ps_icon('arrow-up-right-from-square') ?></button><button type="button" id="show-andaman">Andaman &amp; Nicobar <?= ps_icon('arrow-up-right-from-square') ?></button></nav>
   <div class="map-actions">
     <div class="map-controls panel" aria-label="Map controls">
       <button class="icon-button" id="zoom-in" type="button" aria-label="Zoom in"><?= ps_icon('plus') ?></button>
@@ -56,7 +55,13 @@ header('Cache-Control: no-store');
   <div class="basemap-note">Survey of India outline · Approximate PIN centres · Tap India for a broad area summary</div>
   <a class="map-scroll-link" href="#community-info">FAQs &amp; support <?= ps_icon('arrow-down') ?></a>
 </section>
-<section class="public-metrics" aria-label="Community totals"><div><strong id="live-visits">—</strong><span><i class="live-dot" aria-hidden="true"></i> Active visits · last 2 minutes</span></div><div><strong id="total-visits">—</strong><span>Total visits since launch</span></div><div><strong id="total-reports">—</strong><span>Reports received · all time</span></div><p id="stats-note">Visits count page loads, not unique people. Received reports include submissions awaiting review.</p></section>
+<section class="public-metrics" aria-label="Community totals">
+  <div><strong id="reports-7d">—</strong><span>Reports received · last 7 days</span></div>
+  <div><strong id="total-reports">—</strong><span>Reports received · all time</span></div>
+  <div><strong id="live-visits">—</strong><span><i class="live-dot" aria-hidden="true"></i> Active visitors</span></div>
+  <div><strong id="total-visits">—</strong><span>Total visitors since launch</span></div>
+  <p id="stats-note">Unique visits tracked by 24-hour session. Received reports include submissions awaiting review.</p>
+</section>
 <?php require DIR_INC . '/home-community.php'; ?>
 </main>
 <?php require DIR_INC . '/footer.php'; ?>
@@ -97,17 +102,43 @@ header('Cache-Control: no-store');
     <label for="report-pin-search">PIN, post office or district</label><input id="report-pin-search" type="search" autocomplete="off" maxlength="80" placeholder="Select a state, then enter a PIN or place" required>
     <label for="report-post-office">Choose an approximate location</label><select id="report-post-office" required><option value="">Search above to find a post office</option></select>
     <p class="form-hint">Choose the nearest relevant public post office. This identifies a broad reporting area, not an exact incident point. Directory entries can be outdated.</p>
-    <fieldset class="venue-fields optional-location">
-      <legend>Share a location · optional</legend><p class="form-hint">Use our local map, enter coordinates, or request your device location. No paid map API is used. Select a nearby PIN first. This overview map has no street-level imagery.</p>
-      <button id="open-location-picker" class="button button-secondary" type="button" aria-expanded="false" aria-controls="location-picker-panel"><?= ps_icon('map-location-dot') ?> Choose a point</button>
-      <div id="location-picker-panel" hidden><div id="report-location-map" role="region" aria-label="Optional private location picker"></div><div class="picker-controls" aria-label="Location picker controls"><button type="button" id="picker-zoom-in" class="icon-button" aria-label="Zoom in on location picker"><?= ps_icon('plus') ?></button><button type="button" id="picker-zoom-out" class="icon-button" aria-label="Zoom out on location picker"><?= ps_icon('minus') ?></button></div><p class="form-hint">Tap the map to choose a point. Local overview geography: <a href="https://surveyofindia.gov.in/pages/outline-maps-of-india" target="_blank" rel="noopener noreferrer">Survey of India</a> / <a href="https://nwdp.nwic.gov.in/hi/dataset/state-boundary" target="_blank" rel="noopener noreferrer">NWIC</a>.</p><div class="dialog-actions"><button type="button" id="picker-locate" class="button button-secondary"><?= ps_icon('location-crosshairs') ?> Request device location</button><button type="button" id="clear-shared-location" class="button button-secondary">Clear point</button></div></div>
-      <div class="coordinate-fields"><div><label for="report-latitude">Latitude (optional)</label><input id="report-latitude" type="number" min="6" max="38" step="any" inputmode="decimal" placeholder="28.613900"></div><div><label for="report-longitude">Longitude (optional)</label><input id="report-longitude" type="number" min="68" max="98" step="any" inputmode="decimal" placeholder="77.209000"></div></div>
-      <label class="checkbox-label"><input type="checkbox" id="report-share-location"><span>I choose to save this selected point privately. I understand it could identify a sensitive place.</span></label>
-      <p class="form-hint">Leave this unchecked to send only your PIN-based broad location. A shared point is encrypted for moderators and used to assign a broad map cell. Exact coordinates never appear publicly; avoid homes or places that identify a survivor or child.</p><p id="picker-status" class="form-hint" role="status"></p>
-    </fieldset>
+    <details class="optional-location-details">
+      <summary><span><?= ps_icon('location-dot') ?> Share precise point or coordinates (optional)</span><?= ps_icon('chevron-down') ?></summary>
+      <div class="optional-location-body">
+        <p class="form-hint">Use our local map, enter coordinates, or request your device location. No paid map API is used. Select a nearby PIN first. This overview map has no street-level imagery.</p>
+        <button id="open-location-picker" class="button button-secondary" type="button" aria-expanded="false" aria-controls="location-picker-panel" style="margin-bottom:10px;"><?= ps_icon('map-location-dot') ?> Choose a point on map</button>
+        <div id="location-picker-panel" hidden>
+          <div id="report-location-map" role="region" aria-label="Optional private location picker"></div>
+          <div class="picker-controls" aria-label="Location picker controls">
+            <button type="button" id="picker-zoom-in" class="icon-button" aria-label="Zoom in on location picker"><?= ps_icon('plus') ?></button>
+            <button type="button" id="picker-zoom-out" class="icon-button" aria-label="Zoom out on location picker"><?= ps_icon('minus') ?></button>
+          </div>
+          <p class="form-hint">Tap the map to choose a point. Local overview geography: <a href="https://surveyofindia.gov.in/pages/outline-maps-of-india" target="_blank" rel="noopener noreferrer">Survey of India</a> / <a href="https://nwdp.nwic.gov.in/hi/dataset/state-boundary" target="_blank" rel="noopener noreferrer">NWIC</a>.</p>
+          <div class="dialog-actions">
+            <button type="button" id="picker-locate" class="button button-secondary"><?= ps_icon('location-crosshairs') ?> Request device location</button>
+            <button type="button" id="clear-shared-location" class="button button-secondary">Clear point</button>
+          </div>
+        </div>
+        <div class="coordinate-fields">
+          <div><label for="report-latitude">Latitude (optional)</label><input id="report-latitude" type="number" min="6" max="38" step="any" inputmode="decimal" placeholder="28.613900"></div>
+          <div><label for="report-longitude">Longitude (optional)</label><input id="report-longitude" type="number" min="68" max="98" step="any" inputmode="decimal" placeholder="77.209000"></div>
+        </div>
+        <label class="checkbox-label" style="margin-top:10px;"><input type="checkbox" id="report-share-location"><span>I choose to save this selected point privately. I understand it could identify a sensitive place.</span></label>
+        <p class="form-hint" style="margin-top:4px;">Leave this unchecked to send only your PIN-based broad location. A shared point is encrypted for moderators and used to assign a broad map cell. Exact coordinates never appear publicly; avoid homes or places that identify a survivor or child.</p>
+        <p id="picker-status" class="form-hint" role="status"></p>
+      </div>
+    </details>
     <label for="report-date">Incident date</label><input id="report-date" type="date" required max="<?= (new DateTimeImmutable('now', new DateTimeZone('Asia/Kolkata')))->format('Y-m-d') ?>">
     <label for="report-time">Approximate time (IST)</label><input id="report-time" type="time" required>
     <p class="form-hint">Date and time stay private. Report only incidents within the past year. For online incidents, select a relevant broad locality without identifying anyone.</p>
+    <div class="report-message-group">
+      <label for="report-message">What happened? (optional message · up to 1,000 characters)</label>
+      <textarea id="report-message" maxlength="1000" rows="3" placeholder="Briefly describe what happened without sharing real names, phone numbers, or private identities. This message is encrypted for private moderator review." aria-describedby="report-message-hint"></textarea>
+      <div class="field-meta" style="display:flex; justify-content:space-between; align-items:center; margin-top:4px;">
+        <p id="report-message-hint" class="form-hint" style="margin:0;">Max 1,000 characters. Encrypted for private moderation review; never shown on the public map.</p>
+        <span id="report-message-count" class="form-hint" style="margin:0; font-variant-numeric:tabular-nums; flex-shrink:0;">0/1000</span>
+      </div>
+    </div>
     <div class="human-check"><label for="report-captcha" id="captcha-question">Loading human check…</label><div><input id="report-captcha" inputmode="numeric" pattern="[0-9]+" maxlength="3" autocomplete="off" required aria-describedby="captcha-help"><button type="button" class="icon-button" id="refresh-captcha" aria-label="Get a new human check"><?= ps_icon('arrow-rotate-left') ?></button></div><p class="form-hint" id="captcha-help">Solve the question. It changes with each attempt and expires after 10 minutes.</p></div>
     <div class="honeypot" aria-hidden="true"><label for="website-check">Leave this empty</label><input id="website-check" tabindex="-1" autocomplete="off"></div>
     <label class="checkbox-label"><input id="report-adult" type="checkbox" required><span>I am 18 or older, and this report does not identify a child or survivor.</span></label>

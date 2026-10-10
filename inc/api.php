@@ -39,6 +39,27 @@ try {
   $body=json_decode($raw,true,16,JSON_THROW_ON_ERROR);if(!is_array($body)) throw new HerMapError('Invalid request.');
   foreach($body as $value) if(!is_scalar($value) && $value!==null) throw new HerMapError('Invalid field value.');
   if($name==='reports') ps_json(ps_save_incident($body),201);
+  if($name==='contact') {
+    ps_require_csrf((string)($body['csrf'] ?? ''));
+    ps_rate_limit('contact', 5, 3600);
+    ps_validate_challenge($body);
+    $category = (string)($body['category'] ?? 'general');
+    $validCategories = ['general', 'privacy_request', 'content_concern', 'legal_grievance', 'bug_report'];
+    if (!in_array($category, $validCategories, true)) throw new HerMapError('Please select a valid message category.', 422);
+    $name_val = trim((string)($body['name'] ?? ''));
+    $email = trim((string)($body['email'] ?? ''));
+    $subject = trim((string)($body['subject'] ?? ''));
+    $message = trim((string)($body['message'] ?? ''));
+    if (mb_strlen($name_val) > 100 || preg_match('/[\x00-\x1f<>]/u', $name_val)) throw new HerMapError('Please provide a valid name.', 422);
+    if (!filter_var($email, FILTER_VALIDATE_EMAIL) || strlen($email) > 255) throw new HerMapError('Please provide a valid email address.', 422);
+    if (mb_strlen($subject) < 3 || mb_strlen($subject) > 150 || preg_match('/[\x00-\x1f<>]/u', $subject)) throw new HerMapError('Subject must be between 3 and 150 characters without angle brackets.', 422);
+    if (mb_strlen($message) < 10 || mb_strlen($message) > 2500) throw new HerMapError('Message must be between 10 and 2500 characters.', 422);
+    $ticketId = 'HM-' . date('Y') . '-' . strtoupper(bin2hex(random_bytes(3)));
+    $ipHash = hash_hmac('sha256', $_SERVER['REMOTE_ADDR'] ?? 'cli', ps_secret());
+    $stmt = ps_db()->prepare('INSERT INTO hm_contact_messages(ticket_id, category, name, email, subject, message, status, ip_hash) VALUES(?, ?, ?, ?, ?, ?, "new", ?)');
+    $stmt->execute([$ticketId, $category, $name_val ?: 'Anonymous', $email, $subject, $message, $ipHash]);
+    ps_json(['success' => true, 'ticket_id' => $ticketId, 'message' => "Thank you. Your message has been saved to our private queue with Ticket ID {$ticketId}. Our team will review it."], 201);
+  }
   if($name==='receipt') {
     ps_require_csrf((string)($body['csrf'] ?? ''));ps_rate_limit('receipt',20);
     $token=(string)($body['receipt'] ?? '');if(!preg_match('/^[a-f0-9]{48}$/',$token)) throw new HerMapError('Check your receipt.',422);
