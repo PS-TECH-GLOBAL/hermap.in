@@ -28,7 +28,18 @@ header('Cache-Control: no-store');
       <ul id="search-results" aria-label="Locations"></ul>
     </div>
   </section>
-  <section class="area-panel panel" aria-labelledby="area-name">
+  <button class="area-toggle-pill" id="area-toggle-pill" type="button" aria-expanded="false" aria-controls="area-panel" aria-label="Toggle area overview and community reports">
+    <span class="pill-loc-icon"><?= ps_icon('location-dot') ?></span>
+    <span class="pill-name" id="pill-area-name">India overview</span>
+    <span class="pill-sep" aria-hidden="true">·</span>
+    <span class="pill-count" id="pill-area-count">—</span>
+    <span class="pill-chevron" aria-hidden="true"><?= ps_icon('chevron-down') ?></span>
+  </button>
+  <section class="area-panel panel" id="area-panel" aria-labelledby="area-name">
+    <div class="area-panel-mobile-bar">
+      <span class="area-panel-mobile-title"><?= ps_icon('chart-pie') ?> Area Overview &amp; Stories</span>
+      <button type="button" class="icon-button close-panel-btn" id="close-area-panel" aria-label="Close overview"><?= ps_icon('xmark') ?></button>
+    </div>
     <div class="eyebrow"><span class="status-dot"></span> A community looking out for you</div>
     <h1><?= ps_campaign() ?></h1>
     <p class="intro-copy">A little awareness. A more informed journey.<br>Built for the women of India, with care.</p>

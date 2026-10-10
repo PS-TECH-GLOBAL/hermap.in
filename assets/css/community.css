@@ -165,3 +165,190 @@ dialog#report-dialog.report-dialog[open]{display:flex!important;flex-direction:c
 @media(max-width:600px){.community-content{padding:48px 20px}.faq-section{grid-template-columns:1fr;gap:30px}.section-intro h2,.support-heading h2{font-size:32px}.support-heading{display:block}.support-grid{grid-template-columns:1fr}.support-card{padding:24px}.support-section{margin-top:48px;padding-top:40px}.map-scroll-link{left:16px;transform:none;bottom:4px;font-size:10px;padding:6px 10px}.basemap-note{bottom:100px}.privacy-points{gap:12px}.faq-list summary{padding-top:19px;padding-bottom:19px}.faq-list summary::after{top:18px}}
 @media(max-width:600px){.preview-label{display:none}.basemap-note{bottom:98px;max-width:calc(100% - 90px)}.public-metrics strong{font-size:26px}}
 @media(max-width:600px){dialog#report-dialog.report-dialog{width:100vw!important;width:100dvw!important;max-width:100vw!important;max-width:100dvw!important;height:100vh!important;height:100dvh!important;max-height:100vh!important;max-height:100dvh!important;border-radius:0!important;border:none!important;margin:0!important;inset:0!important}.report-modal-header{padding:16px 18px 14px}.report-modal-header h2{font-size:16px}.report-modal-header .eyebrow{font-size:9px}.report-header-subtitle{font-size:11px}.report-modal-body{padding:16px 18px 20px}.report-modal-footer{padding:12px 18px calc(12px + env(safe-area-inset-bottom,0px))}.report-modal-footer .button{min-height:48px;font-size:14px}}
+
+/* Desktop: hide mobile toggle pill and mobile panel bar */
+.area-toggle-pill{display:none!important}
+.area-panel-mobile-bar{display:none!important}
+
+/* Mobile & tablet viewports: full-screen map with floating overview pill */
+@media(max-width:768px){
+  .area-toggle-pill{
+    display:inline-flex!important;
+    align-items:center;
+    gap:8px;
+    position:absolute;
+    top:132px;
+    left:14px;
+    z-index:15;
+    background:#fffffffa;
+    backdrop-filter:blur(10px);
+    -webkit-backdrop-filter:blur(10px);
+    border:1px solid var(--line);
+    border-radius:24px;
+    padding:8px 14px;
+    box-shadow:0 4px 16px rgba(36,3,72,.1);
+    cursor:pointer;
+    font-size:12px;
+    color:var(--brand);
+    max-width:calc(100% - 28px);
+    box-sizing:border-box;
+    transition:transform .15s ease,box-shadow .15s ease,border-color .15s ease;
+  }
+  .area-toggle-pill:hover,.area-toggle-pill:focus-visible{
+    background:#fff;
+    box-shadow:0 6px 20px rgba(36,3,72,.14);
+    outline:none;
+  }
+  .area-toggle-pill[aria-expanded="true"]{
+    background:#fff;
+    border-color:var(--brand-accent);
+    box-shadow:0 6px 22px rgba(36,3,72,.16);
+  }
+  .pill-loc-icon{
+    color:var(--brand-accent);
+    font-size:12px;
+    display:flex;
+    align-items:center;
+  }
+  .pill-name{
+    font-weight:600;
+    color:var(--brand);
+    max-width:140px;
+    white-space:nowrap;
+    overflow:hidden;
+    text-overflow:ellipsis;
+    line-height:1.2;
+  }
+  .pill-sep{
+    color:#c4bdcb;
+    font-weight:700;
+  }
+  .pill-count{
+    color:var(--muted);
+    font-size:11px;
+    font-weight:500;
+    white-space:nowrap;
+  }
+  .pill-chevron{
+    color:var(--brand-accent);
+    font-size:10px;
+    display:flex;
+    align-items:center;
+    margin-left:2px;
+    transition:transform .2s ease;
+  }
+  .area-toggle-pill[aria-expanded="true"] .pill-chevron{
+    transform:rotate(180deg);
+  }
+
+  /* Overview panel hidden by default on mobile so the map is 100% visible */
+  .area-panel{
+    display:none!important;
+  }
+
+  /* When toggled open, drops down as an overlay card beneath the pill */
+  .area-panel.is-open{
+    display:flex!important;
+    flex-direction:column;
+    position:absolute!important;
+    z-index:25;
+    top:178px!important;
+    left:14px!important;
+    right:14px!important;
+    width:auto!important;
+    max-height:calc(100vh - 240px)!important;
+    max-height:calc(100dvh - 240px)!important;
+    overflow-y:auto!important;
+    overscroll-behavior:contain;
+    border-radius:18px!important;
+    background:#fffffffc!important;
+    backdrop-filter:blur(14px);
+    -webkit-backdrop-filter:blur(14px);
+    border:1px solid var(--line);
+    box-shadow:0 16px 48px rgba(36,3,72,.24)!important;
+    padding:16px 18px 20px!important;
+    animation:areaPanelDropIn .22s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+  }
+
+  @keyframes areaPanelDropIn{
+    from{opacity:0;transform:translateY(-8px) scale(.98)}
+    to{opacity:1;transform:translateY(0) scale(1)}
+  }
+
+  .area-panel-mobile-bar{
+    display:flex!important;
+    align-items:center;
+    justify-content:space-between;
+    margin-bottom:12px;
+    padding-bottom:10px;
+    border-bottom:1px solid var(--line);
+  }
+  .area-panel-mobile-title{
+    font-size:13px;
+    font-weight:700;
+    color:var(--brand);
+    display:flex;
+    align-items:center;
+    gap:8px;
+  }
+  .area-panel-mobile-title i{
+    color:var(--brand-accent);
+  }
+  .close-panel-btn{
+    width:32px!important;
+    height:32px!important;
+    border-radius:8px!important;
+    background:#f6f1fb;
+    color:var(--brand);
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    font-size:14px;
+    border:0;
+    cursor:pointer;
+  }
+  .close-panel-btn:hover{
+    background:#ede3f5;
+  }
+
+  /* Inside the open panel on mobile */
+  .area-panel>.eyebrow,.area-panel h1,.intro-copy,.area-divider,.care-note{
+    display:none!important;
+  }
+  .area-heading{
+    display:flex!important;
+    align-items:center;
+    gap:10px;
+    margin-bottom:12px;
+  }
+  .area-heading h2{
+    font-size:16px!important;
+  }
+  .area-heading .icon-button{
+    display:inline-flex!important;
+    width:36px;
+    height:36px;
+  }
+  .filter-label{
+    display:block!important;
+    margin-top:0!important;
+    margin-bottom:6px!important;
+  }
+  .area-panel.is-open>.choice{
+    width:100%!important;
+    grid-column:auto!important;
+    grid-row:auto!important;
+    margin-bottom:10px;
+  }
+  .area-panel.is-open>.choice .choice-trigger{
+    width:100%!important;
+    font-size:13px!important;
+    min-height:44px!important;
+  }
+  .empty-state{
+    margin-top:10px!important;
+    padding:14px 12px!important;
+    text-align:left!important;
+  }
+}
+
