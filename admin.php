@@ -135,6 +135,25 @@ if($loggedIn)try{
      $like='%'.$search.'%';
      array_push($params,$like,$like,$like,$like,$like,$search);
  }
+ $adminState = max(0, (int)($_GET['state_id'] ?? 0));
+ $adminCity = max(0, (int)($_GET['city_id'] ?? 0));
+ $adminPin = trim((string)($_GET['pincode'] ?? ''));
+ if(strlen($adminPin)>10 || preg_match('/[^0-9]/',$adminPin)) $adminPin='';
+ $adminCategory = trim((string)($_GET['category'] ?? ''));
+ if(!isset(INCIDENT_CATEGORIES[$adminCategory])) $adminCategory='';
+
+ if($adminState > 0) { $whereClause[] = 'r.state_id = ?'; $params[] = $adminState; }
+ if($adminCity > 0) { $whereClause[] = 'r.city_id = ?'; $params[] = $adminCity; }
+ if($adminPin !== '') { $whereClause[] = 'p.pincode LIKE ?'; $params[] = $adminPin . '%'; }
+ if($adminCategory !== '') { $whereClause[] = 'r.category = ?'; $params[] = $adminCategory; }
+
+ $adminStates = $db->query('SELECT id, name FROM hm_states ORDER BY name')->fetchAll();
+ $adminCities = [];
+ if($adminState > 0) {
+     $cStmt = $db->prepare('SELECT id, name FROM hm_cities WHERE state_id=? ORDER BY name');
+     $cStmt->execute([$adminState]);
+     $adminCities = $cStmt->fetchAll();
+ }
  $whereSql=$whereClause ? 'WHERE '.implode(' AND ',$whereClause) : '';
  $countStmt=$db->prepare("SELECT COUNT(*) FROM hm_incidents r JOIN hm_states s ON s.id=r.state_id LEFT JOIN hm_cities c ON c.id=r.city_id JOIN hm_post_offices p ON p.id=r.post_office_id $whereSql");
  $countStmt->execute($params);
@@ -213,18 +232,63 @@ require DIR_INC.'/content-start.php';
 <div class="queue-heading">
   <h2>Incident review</h2>
   <nav aria-label="Review status">
+    <?php
+    $tabParams = $_GET;
+    unset($tabParams['status'], $tabParams['page']);
+    $baseTabQuery = http_build_query($tabParams);
+    if ($baseTabQuery !== '') $baseTabQuery = '&' . $baseTabQuery;
+    ?>
     <?php foreach(['pending'=>'Pending','approved'=>'Approved','rejected'=>'Rejected','all'=>'All'] as $key=>$label): ?>
-      <a href="<?= ps_escape(ps_url('admin?tab=incidents&status='.$key.($search!==''?'&q='.urlencode($search):''))) ?>" <?= $key===$filter?'aria-current="page"':'' ?>><?= $label ?> (<?= (int)($counts[$key] ?? ($key==='all'?array_sum($counts):0)) ?>)</a>
+      <a href="<?= ps_escape(ps_url('admin?tab=incidents&status='.$key.$baseTabQuery)) ?>" <?= $key===$filter?'aria-current="page"':'' ?>><?= $label ?> (<?= (int)($counts[$key] ?? ($key==='all'?array_sum($counts):0)) ?>)</a>
     <?php endforeach; ?>
   </nav>
 </div>
 
-<form method="get" class="panel" style="display:flex; gap:10px; padding:12px; margin:16px 0; align-items:center;">
+<form method="get" class="panel admin-filter-bar" style="display:flex; flex-wrap:wrap; gap:10px; padding:14px; margin:16px 0; align-items:center;">
   <input type="hidden" name="tab" value="incidents">
   <input type="hidden" name="status" value="<?= ps_escape($filter) ?>">
-  <input type="search" name="q" value="<?= ps_escape($search) ?>" placeholder="Search by PIN, city, state, category or ID..." style="flex:1; min-height:40px; border:1px solid var(--line); border-radius:8px; padding:6px 12px;">
-  <button class="button button-primary" type="submit" style="min-height:40px; padding:6px 16px;"><?= ps_icon('magnifying-glass') ?> Filter</button>
-  <?php if($search!==''): ?><a href="<?= ps_escape(ps_url('admin?tab=incidents&status='.$filter)) ?>" class="button button-secondary" style="min-height:40px; padding:6px 16px;">Clear</a><?php endif; ?>
+
+  <div style="flex:1; min-width:140px;">
+    <select name="state_id" id="admin-state-select" style="width:100%; min-height:40px; border:1px solid var(--line); border-radius:8px; padding:6px 10px; font-size:13px;">
+      <option value="">All States &amp; UTs</option>
+      <?php foreach ($adminStates as $st): ?>
+        <option value="<?= (int)$st['id'] ?>" <?= $adminState === (int)$st['id'] ? 'selected' : '' ?>><?= ps_escape($st['name']) ?></option>
+      <?php endforeach; ?>
+    </select>
+  </div>
+
+  <div style="flex:1; min-width:140px;">
+    <select name="city_id" id="admin-city-select" <?= $adminState === 0 ? 'disabled' : '' ?> style="width:100%; min-height:40px; border:1px solid var(--line); border-radius:8px; padding:6px 10px; font-size:13px;">
+      <option value="">All Cities</option>
+      <?php foreach ($adminCities as $ct): ?>
+        <option value="<?= (int)$ct['id'] ?>" <?= $adminCity === (int)$ct['id'] ? 'selected' : '' ?>><?= ps_escape($ct['name']) ?></option>
+      <?php endforeach; ?>
+    </select>
+  </div>
+
+  <div style="width:110px;">
+    <input type="text" name="pincode" value="<?= ps_escape($adminPin) ?>" placeholder="PIN code" maxlength="6" inputmode="numeric" style="width:100%; min-height:40px; border:1px solid var(--line); border-radius:8px; padding:6px 10px; font-size:13px;">
+  </div>
+
+  <div style="flex:1; min-width:140px;">
+    <select name="category" style="width:100%; min-height:40px; border:1px solid var(--line); border-radius:8px; padding:6px 10px; font-size:13px;">
+      <option value="">All Categories</option>
+      <?php foreach (INCIDENT_CATEGORIES as $catKey => $catLabel): ?>
+        <option value="<?= ps_escape($catKey) ?>" <?= $adminCategory === $catKey ? 'selected' : '' ?>><?= ps_escape($catLabel) ?></option>
+      <?php endforeach; ?>
+    </select>
+  </div>
+
+  <div style="flex:2; min-width:180px;">
+    <input type="search" name="q" value="<?= ps_escape($search) ?>" placeholder="Search keyword, ID or office..." style="width:100%; min-height:40px; border:1px solid var(--line); border-radius:8px; padding:6px 10px; font-size:13px;">
+  </div>
+
+  <div style="display:flex; gap:8px;">
+    <button class="button button-primary" type="submit" style="min-height:40px; padding:6px 16px;"><?= ps_icon('filter') ?> Filter</button>
+    <?php if($search!=='' || $adminState>0 || $adminCity>0 || $adminPin!=='' || $adminCategory!==''): ?>
+      <a href="<?= ps_escape(ps_url('admin?tab=incidents&status='.$filter)) ?>" class="button button-secondary" style="min-height:40px; padding:6px 14px;">Clear</a>
+    <?php endif; ?>
+  </div>
 </form>
 
 <p class="form-hint">Check duplicates, abusive targeting, personal identifiers and venue/branch ambiguity. Reject details identifying survivors or children. Optional online account handles are unverified private context. They and venue details stay private after approval; never contact or expose an account based on a report.</p>
@@ -286,7 +350,13 @@ require DIR_INC.'/content-start.php';
   </form>
 </article>
 <?php endforeach; ?>
-<nav class="pagination" aria-label="Queue pages"><?php if($page>1): ?><a href="<?= ps_escape(ps_url('admin?tab=incidents&status='.$filter.'&page='.($page-1).($search!==''?'&q='.urlencode($search):''))) ?>">Previous</a><?php endif; ?><span>Page <?= $page ?> · <?= number_format($total) ?> reports</span><?php if($page*25<$total): ?><a href="<?= ps_escape(ps_url('admin?tab=incidents&status='.$filter.'&page='.($page+1).($search!==''?'&q='.urlencode($search):''))) ?>">Next</a><?php endif; ?></nav>
+<?php
+$adminPageQuery = $_GET;
+unset($adminPageQuery['page']);
+$adminPrevUrl = ps_url('admin?' . http_build_query(array_merge($adminPageQuery, ['page' => $page - 1])));
+$adminNextUrl = ps_url('admin?' . http_build_query(array_merge($adminPageQuery, ['page' => $page + 1])));
+?>
+<nav class="pagination" aria-label="Queue pages"><?php if($page>1): ?><a href="<?= ps_escape($adminPrevUrl) ?>">Previous</a><?php endif; ?><span>Page <?= $page ?> · <?= number_format($total) ?> reports</span><?php if($page*25<$total): ?><a href="<?= ps_escape($adminNextUrl) ?>">Next</a><?php endif; ?></nav>
 
 <?php elseif($tab==='inquiries'): ?>
 <div class="queue-heading">

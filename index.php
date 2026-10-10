@@ -16,6 +16,7 @@ $routes = [
     'admin' => 'admin.php',
     'purpose' => 'about.php', 'how-it-works' => 'methodology.php',
     'privacy' => 'privacy-policy.php', 'terms' => 'terms-and-conditions.php',
+    'reports' => 'reports.php', 'stories' => 'reports.php',
 ];
 if (!isset($routes[$route])) {
     http_response_code(404);

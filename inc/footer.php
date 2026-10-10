@@ -9,6 +9,7 @@
     <a href="https://www.instagram.com/HERMAPOFFICIAL" target="_blank" rel="noopener noreferrer" aria-label="HerMap on Instagram"><i class="fa-brands fa-instagram" aria-hidden="true"></i><span>Instagram</span></a>
   </nav>
   <nav class="footer-links" aria-label="Footer navigation">
+    <a href="<?= ps_escape(ps_url('reports')) ?>">Stories</a>
     <a href="<?= ps_escape(ps_url('privacy')) ?>">Privacy</a>
     <a href="<?= ps_escape(ps_url('terms')) ?>">Terms</a>
     <a href="<?= ps_escape(ps_url('contact')) ?>">Contact</a>

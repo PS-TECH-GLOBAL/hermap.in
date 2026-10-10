@@ -101,6 +101,10 @@ try{
  [$status,$public]=$request('/api/summary?days=30');check(!str_contains($public,$body['online_handle'])&&!str_contains($public,$body['venue_name']),'Private context exposed in public summary.');
  check(!str_contains($public,'Testing sensitive private description'),'Private report message exposed in public summary.');
  check(!str_contains($public,'28.6139')&&!str_contains($public,'77.209'),'Precise shared coordinates exposed publicly.');
+ [$status,$reportsPage]=$request('/reports');
+ check($status===200&&str_contains($reportsPage,'Community Experiences &amp; Stories'),'/reports page failed to load.');
+ check(!str_contains($reportsPage,'Testing sensitive private description'),'Private unshared message exposed on /reports.');
+ check(str_contains($reportsPage,'filter-state')&&str_contains($reportsPage,'filter-city')&&str_contains($reportsPage,'filter-pincode'),'/reports missing location filters.');
  [$status]=$request('/api/reports',$body);check($status===422,'Challenge replay accepted.');
  [$status,$text]=$request('/api/challenge');$duplicate=json_decode($text,true);preg_match('/(\d+) ([+−]) (\d+)/u',$duplicate['question'],$parts);$body['csrf']=$duplicate['csrf'];$body['challenge_id']=$duplicate['id'];$body['challenge_answer']=(string)($parts[2]==='+'?(int)$parts[1]+(int)$parts[3]:(int)$parts[1]-(int)$parts[3]);sleep(2);[$status]=$request('/api/reports',$body);check($status===409,'Duplicate report accepted.');
  [$status,$text]=$request('/admin');check($status===200&&str_contains($text,'Moderator sign in')&&!str_contains($text,'Incident review'),'Admin is not protected.');preg_match('/name="csrf" value="([a-f0-9]+)"/',$text,$match);$adminCsrf=$match[1];

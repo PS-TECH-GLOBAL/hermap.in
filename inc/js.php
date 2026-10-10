@@ -10,6 +10,10 @@
 <div id="contact-settings" hidden data-api-url="<?= ps_escape(ps_url('api/')) ?>"></div>
 <script src="<?= ps_escape(ps_asset('js/contact.js')) ?>" defer></script>
 <?php endif; ?>
+<?php if (($route ?? '')==='reports' || ($route ?? '')==='stories'): ?>
+<div id="reports-settings" hidden data-api-url="<?= ps_escape(ps_url('api/')) ?>"></div>
+<script src="<?= ps_escape(ps_asset('js/reports.js')) ?>" defer></script>
+<?php endif; ?>
 <?php if ($isMapPage ?? false): ?>
 <script src="<?= ps_escape(ps_asset('js/map.js')) ?>" type="module"></script>
 <script src="<?= ps_escape(ps_asset('js/location-picker.js')) ?>" type="module"></script>

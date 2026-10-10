@@ -6,6 +6,7 @@
   <nav aria-label="Main navigation" class="desktop-nav">
     <a href="<?= ps_escape(ps_url('purpose')) ?>">Our purpose</a>
     <a href="<?= ps_escape(ps_url('how-it-works')) ?>">How the map works</a>
+    <a href="<?= ps_escape(ps_url('reports')) ?>">Community stories</a>
     <a href="<?= ps_escape(ps_url('#support')) ?>">Find support</a>
     <a class="emergency-link" href="tel:112"><?= ps_icon('phone') ?> Emergency 112</a>
   </nav>
@@ -13,6 +14,7 @@
   <nav id="mobile-menu" class="mobile-menu" aria-label="Mobile navigation" hidden>
     <a href="<?= ps_escape(ps_url('purpose')) ?>">Our purpose</a>
     <a href="<?= ps_escape(ps_url('how-it-works')) ?>">How the map works</a>
+    <a href="<?= ps_escape(ps_url('reports')) ?>">Community stories</a>
     <a href="<?= ps_escape(ps_url('privacy')) ?>">Privacy policy</a>
     <a href="<?= ps_escape(ps_url('terms')) ?>">Terms &amp; conditions</a>
     <a href="<?= ps_escape(ps_url('#faqs')) ?>">FAQs</a>

@@ -15,4 +15,18 @@
  metric.addEventListener('change',draw);group.addEventListener('change',draw);period.addEventListener('change',()=>{if(period.value==='all')group.value='month';draw();});draw();
  async function refresh(){if(document.hidden)return;try{const response=await fetch(source.dataset.apiUrl,{cache:'no-store',credentials:'same-origin'});if(response.status===401){window.location.reload();return;}const stats=await response.json();if(!response.ok)throw new Error(stats.error||'Dashboard updates are unavailable.');data=stats.daily;source.dataset.today=stats.today;document.querySelectorAll('[data-admin-metric]').forEach(element=>{element.textContent=Number(stats.metrics[element.dataset.adminMetric]||0).toLocaleString('en-IN');});draw();document.getElementById('admin-update-state').textContent='Counts and graphs updated. Refresh the page to update the review queue.';}catch(error){document.getElementById('admin-update-state').textContent=error.message;}}
  setInterval(refresh,30000);document.addEventListener('visibilitychange',()=>{if(!document.hidden)refresh();});
+ const adminState=document.getElementById('admin-state-select'),adminCity=document.getElementById('admin-city-select');
+ if(adminState&&adminCity){
+  adminState.addEventListener('change',async()=>{
+   const stateId=adminState.value;adminCity.innerHTML='<option value="">All Cities</option>';
+   if(!stateId){adminCity.disabled=true;return;}
+   adminCity.disabled=true;
+   try{
+    const res=await fetch(`${source.dataset.apiUrl.replace('admin-stats','')}locations?type=cities&state_id=${encodeURIComponent(stateId)}`,{cache:'no-store'});
+    const data=await res.json();adminCity.innerHTML='<option value="">All Cities</option>';
+    if(Array.isArray(data.items)){data.items.forEach(c=>adminCity.add(new Option(c.name,c.id)));}
+    adminCity.disabled=false;
+   }catch{adminCity.disabled=false;}
+  });
+ }
 })();

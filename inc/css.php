@@ -7,3 +7,4 @@
 <link rel="stylesheet" href="<?= ps_escape(ps_asset('css/enhancements.css')) ?>">
 <?php if ($isMapPage ?? false): ?><link rel="stylesheet" href="<?= ps_escape(ps_asset('css/community.css')) ?>"><?php endif; ?>
 <?php if (($route ?? '')==='admin'): ?><link rel="stylesheet" href="<?= ps_escape(ps_asset('css/admin.css')) ?>"><?php endif; ?>
+<?php if (($route ?? '')==='reports' || ($route ?? '')==='stories'): ?><link rel="stylesheet" href="<?= ps_escape(ps_asset('css/reports.css')) ?>"><?php endif; ?>
