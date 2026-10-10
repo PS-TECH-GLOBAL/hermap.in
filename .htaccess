@@ -20,6 +20,17 @@ ErrorDocument 503 "503 Service Unavailable"
 
 RewriteEngine On
 
+# 0. Canonical HTTPS and WWW Redirection (production only; excludes localhost / 127.0.0.1)
+# Redirect non-www (hermap.in) to www.hermap.in (both http and https)
+RewriteCond %{HTTP_HOST} ^hermap\.in$ [NC]
+RewriteRule ^(.*)$ https://www.hermap.in/$1 [R=301,L]
+
+# Redirect HTTP to HTTPS (honours reverse proxies / Cloudflare Flexible/Full SSL)
+RewriteCond %{HTTPS} !=on
+RewriteCond %{HTTP:X-Forwarded-Proto} !https [NC]
+RewriteCond %{HTTP_HOST} !^(?:localhost|127\.0\.0\.1)(?::\d+)?$ [NC]
+RewriteRule ^(.*)$ https://www.hermap.in/$1 [R=301,L]
+
 # 1. Block access to hidden files and dot directories
 RewriteRule (^|/)\. - [F,L]
 
