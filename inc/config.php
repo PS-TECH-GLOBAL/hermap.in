@@ -32,10 +32,36 @@ define('INTAKE_ENABLED', getenv('REPORT_INTAKE_ENABLED') === '1');
 define('PUBLIC_MIN_REPORTS', max(5, (int)(getenv('PUBLIC_MIN_REPORTS') ?: 5)));
 define('PUBLICATION_DELAY_HOURS', max(24, (int)(getenv('PUBLICATION_DELAY_HOURS') ?: 48)));
 date_default_timezone_set('UTC');
-ini_set('display_errors', PROD ? '0' : '1');
+ini_set('display_errors', '0');
+ini_set('display_startup_errors', '0');
+ini_set('log_errors', '1');
 error_reporting(E_ALL);
 
+if (function_exists('header_remove')) {
+    header_remove('X-Powered-By');
+}
+
+set_exception_handler(static function (Throwable $e): void {
+    error_log('HerMap Unhandled Exception: ' . $e->getMessage() . ' in ' . $e->getFile() . ':' . $e->getLine());
+    if (PHP_SAPI !== 'cli') {
+        if (!headers_sent()) {
+            http_response_code(500);
+            if (function_exists('header_remove')) {
+                header_remove('X-Powered-By');
+            }
+            header('Content-Type: text/plain; charset=UTF-8');
+        }
+        echo "500 Internal Server Error\n";
+    } else {
+        fwrite(STDERR, "An internal error occurred.\n");
+    }
+    exit(1);
+});
+
 if (PHP_SAPI !== 'cli') {
+    if (function_exists('header_remove')) {
+        header_remove('X-Powered-By');
+    }
     header('Content-Type: text/html; charset=UTF-8');
     header('X-Content-Type-Options: nosniff');
     header('X-Frame-Options: DENY');

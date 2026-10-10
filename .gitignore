@@ -1,17 +1,42 @@
+# Dependencies and caches
 node_modules/
 .npm-cache/
+
+# Environment files and credentials
 .env
+.env.*
+!.env.example
+*admin-access*.txt
+credentials*.txt
+*.key
+*.pem
+*.crt
+*.cer
+
+# Temporary, private and runtime folders
 tmp/
-*.log
-.agents/
-.codex/
-ps_crm_*.sql
 private/
+*.log
+
+# Databases, backups and database dumps
+ps_crm_*.sql
+*.sql.gz
 *.bak
 *.dump
 *.zip
 *.sqlite
-admin-access.txt
+*.sqlite3
+*.db
+
+# Internal planning and developer agent scratch files
+.agents/
+.codex/
+.vscode/
+.idea/
 PLAN.md
 tests/legacy-preview-smoke.cjs
 assets/data/preview-locations.json
+
+# Operating system files
+.DS_Store
+Thumbs.db

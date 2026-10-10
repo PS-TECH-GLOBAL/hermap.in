@@ -13,11 +13,16 @@ function ps_db(): PDO
     $port = (int) (getenv('DB_PORT') ?: 3306);
     $dsn = sprintf('mysql:host=%s;port=%d;dbname=%s;charset=utf8mb4',
         getenv('DB_HOST') ?: '127.0.0.1', $port, getenv('DB_NAME'));
-    $connection = new PDO($dsn, $user, getenv('DB_PASSWORD') ?: '', [
-        PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION,
-        PDO::ATTR_DEFAULT_FETCH_MODE => PDO::FETCH_ASSOC,
-        PDO::ATTR_EMULATE_PREPARES => false,
-    ]);
-    $connection->exec("SET time_zone='+00:00'");
-    return $connection;
+    try {
+        $connection = new PDO($dsn, $user, getenv('DB_PASSWORD') ?: '', [
+            PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION,
+            PDO::ATTR_DEFAULT_FETCH_MODE => PDO::FETCH_ASSOC,
+            PDO::ATTR_EMULATE_PREPARES => false,
+        ]);
+        $connection->exec("SET time_zone='+00:00'");
+        return $connection;
+    } catch (PDOException $e) {
+        error_log('HerMap DB connection failure: ' . $e->getMessage());
+        throw new RuntimeException('HerMap database service is temporarily unavailable.');
+    }
 }

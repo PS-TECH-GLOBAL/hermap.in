@@ -38,11 +38,12 @@ if (!in_array('--schema-only', $argv, true) && !is_file("$root/.env")) {
         if(!preg_match('/^(hm_|ps_crm_)[a-z_]+$/',$ownedTable)) continue;
         $db->exec("GRANT SELECT,INSERT,UPDATE,DELETE ON hermap.`$ownedTable` TO 'hermap_app'@'127.0.0.1'");
     }
-    $env="APP_ENV=local\nSITE_URL=http://localhost/hermap.in\nDB_HOST=127.0.0.1\nDB_PORT=3306\nDB_NAME=hermap\nDB_USER=hermap_app\nDB_PASSWORD=$password\nSUPPORT_EMAIL=help@hermap.in\nREPORT_INTAKE_ENABLED=1\nAPP_SECRET=".bin2hex(random_bytes(32))."\nAPP_ENCRYPTION_KEY=".bin2hex(random_bytes(32))."\nADMIN_USERNAME=amit\nADMIN_PASSWORD_HASH=".password_hash($adminPassword,PASSWORD_DEFAULT)."\nADMIN_TOTP_SECRET=$totp\nPUBLIC_MIN_REPORTS=5\nPUBLICATION_DELAY_HOURS=48\n";
+    $adminUser = getenv('ADMIN_USERNAME') ?: 'admin';
+    $env="APP_ENV=local\nSITE_URL=http://localhost/hermap.in\nDB_HOST=127.0.0.1\nDB_PORT=3306\nDB_NAME=hermap\nDB_USER=hermap_app\nDB_PASSWORD=$password\nSUPPORT_EMAIL=help@hermap.in\nREPORT_INTAKE_ENABLED=1\nAPP_SECRET=".bin2hex(random_bytes(32))."\nAPP_ENCRYPTION_KEY=".bin2hex(random_bytes(32))."\nADMIN_USERNAME=$adminUser\nADMIN_PASSWORD_HASH=".password_hash($adminPassword,PASSWORD_DEFAULT)."\nADMIN_TOTP_SECRET=$totp\nPUBLIC_MIN_REPORTS=5\nPUBLICATION_DELAY_HOURS=48\n";
     file_put_contents("$root/.env",$env);
     $access=getenv('HERMAP_ACCESS_FILE') ?: "$root/tmp/admin-access.txt";
     if(!is_dir(dirname($access))) mkdir(dirname($access),0700,true);
-    file_put_contents($access,"HerMap local moderation access\nURL: http://localhost/hermap.in/admin\nUsername: amit\nPassword: $adminPassword\nAuthenticator (TOTP) secret: $totp\nIssuer: HerMap.in\nKeep this file private. Add the secret to an authenticator app.\n");
+    file_put_contents($access,"HerMap local moderation access\nURL: http://localhost/hermap.in/admin\nUsername: $adminUser\nPassword: $adminPassword\nAuthenticator (TOTP) secret: $totp\nIssuer: HerMap.in\nKeep this file private. Add the secret to an authenticator app.\n");
     echo "Private application credentials and admin access file created.\n";
 }
 echo json_encode(['database'=>'hermap','countries'=>1,'states'=>(int)$db->query('SELECT COUNT(*) FROM hm_states')->fetchColumn(),'cities'=>(int)$db->query('SELECT COUNT(*) FROM hm_cities')->fetchColumn()], JSON_PRETTY_PRINT)."\n";

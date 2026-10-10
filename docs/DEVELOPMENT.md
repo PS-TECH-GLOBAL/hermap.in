@@ -36,7 +36,7 @@ php tests/integration.php
 php tests/integration.php --http
 ```
 
-Backend tests require the seeded/imported local database; HTTP tests also require the local server. Set `HERMAP_TEST_URL` if it uses another origin and `HERMAP_ACCESS_FILE` to your generated private admin instructions. Tests are refused in production, use fictional fixtures, and clean up their records/counter increments. Tests require the setup helper's `amit` login and the configured authenticator secret. Public UI checks should cover searchable-select keyboard navigation, dependent options, disabled countries, conditional fields, receipts, narrow layouts, map/island views, and reduced motion. Do not submit real experiences as tests.
+Backend tests require the seeded/imported local database; HTTP tests also require the local server. Set `HERMAP_TEST_URL` if it uses another origin and `HERMAP_ACCESS_FILE` to your generated private admin instructions. Tests are refused in production, use fictional fixtures, and clean up their records/counter increments. Tests require the setup helper's generated login from your access file and the configured authenticator secret. Public UI checks should cover searchable-select keyboard navigation, dependent options, disabled countries, conditional fields, receipts, narrow layouts, map/island views, and reduced motion. Do not submit real experiences as tests.
 
 ## Before public deployment
 

@@ -92,7 +92,7 @@ try {
 }
 
 // 6. Seed default admin from .env into hm_admins if table is empty and .env has credentials
-$adminUser = getenv('ADMIN_USERNAME') ?: 'amit';
+$adminUser = getenv('ADMIN_USERNAME') ?: 'admin';
 $adminPassHash = getenv('ADMIN_PASSWORD_HASH') ?: '';
 $adminTotp = getenv('ADMIN_TOTP_SECRET') ?: '';
 

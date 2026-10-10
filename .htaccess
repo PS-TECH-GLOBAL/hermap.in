@@ -1,12 +1,38 @@
+ServerSignature Off
+
+<IfModule mod_headers.c>
+    Header unset X-Powered-By
+    Header always unset X-Powered-By
+    Header unset Server
+    Header always unset Server
+</IfModule>
+
 Options -Indexes
 DirectoryIndex index.php
 AddType text/javascript .mjs
+
+ErrorDocument 400 "400 Bad Request"
+ErrorDocument 401 "401 Unauthorized"
+ErrorDocument 403 "403 Forbidden"
+ErrorDocument 404 "404 Not Found"
+ErrorDocument 500 "500 Internal Server Error"
+ErrorDocument 503 "503 Service Unavailable"
+
 RewriteEngine On
-# Includes, development files and secrets must never be served.
-RewriteRule ^(?:inc|scripts|tests|database|docs|node_modules|tmp|\.agents|\.npm-cache)(?:/|$) - [F,L,NC]
+
+# 1. Block access to hidden files and dot directories
 RewriteRule (^|/)\. - [F,L]
-RewriteRule \.(?:sql|sqlite|bak|log)$ - [F,L,NC]
-RewriteRule ^(?:PLAN\.md|README\.md|CONTRIBUTING\.md|SECURITY\.md|package(?:-lock)?\.json)$ - [F,L,NC]
+
+# 2. Block internal, private, administrative, test, script, and documentation directories
+RewriteRule ^(?:inc|scripts|tests|database|docs|node_modules|tmp|private|vendor|\.agents|\.npm-cache|\.git|\.vscode|\.idea)(?:/|$) - [F,L,NC]
+
+# 3. Block sensitive file extensions anywhere in the tree
+RewriteRule \.(?:sql|sqlite|bak|log|env|ini|conf|cfg|sh|bat|cmd|ps1|yml|yaml|md|lock)$ - [F,L,NC]
+
+# 4. Block package manifests, dependency locks, and access/credentials files
+RewriteRule ^(?:package(?:-lock)?\.json|composer\.(?:json|lock)|admin-access.*|credentials.*)$ - [F,L,NC]
+
+# 5. Allow static assets and pass all other requests to index.php
 RewriteCond %{REQUEST_FILENAME} !-f
 RewriteCond %{REQUEST_FILENAME} !-d
 RewriteRule ^ index.php [QSA,L]
