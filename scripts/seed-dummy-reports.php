@@ -127,8 +127,8 @@ foreach ($states as $s) {
         $cityId = !empty($po['city_id']) ? (int)$po['city_id'] : null;
         $poId = (int)$po['id'];
 
-        // Dates within the last 5 to 20 days
-        $daysAgo = random_int(5, 20);
+        // Dates within the last 2 to 25 days (weighted towards 2-6 days for 7-day view)
+        $daysAgo = (random_int(1, 10) <= 7) ? random_int(2, 6) : random_int(7, 25);
         $date = (new DateTimeImmutable("-{$daysAgo} days", new DateTimeZone('Asia/Kolkata')))->format('Y-m-d');
         $hour = random_int(8, 22);
         $minute = random_int(0, 59);
